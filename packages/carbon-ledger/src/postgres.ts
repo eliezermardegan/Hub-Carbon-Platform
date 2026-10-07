@@ -18,6 +18,7 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      await client.query("INSERT INTO carbon_ledger_tenant_heads (tenant_id, head_event_hash) VALUES ($1, NULL) ON CONFLICT (tenant_id) DO NOTHING", [event.tenantId]);
       await client.query("SELECT tenant_id FROM carbon_ledger_tenant_heads WHERE tenant_id = $1 FOR UPDATE", [event.tenantId]);
       const head = await client.query<HeadRow>(
         "SELECT head_event_hash FROM carbon_ledger_tenant_heads WHERE tenant_id = $1",
@@ -26,6 +27,14 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
       const currentHead = head.rows[0]?.head_event_hash ?? null;
       if (currentHead !== event.previousEntryHash) {
         throw new Error("ledger head conflict: stale previousEntryHash");
+      }
+
+      const expected = await client.query<{ expected_sequence: string }>(
+        "SELECT COALESCE(MAX(sequence), 0) + 1 AS expected_sequence FROM carbon_ledger_events WHERE tenant_id = $1",
+        [event.tenantId]
+      );
+      if (Number(expected.rows[0]?.expected_sequence) !== event.sequence) {
+        throw new Error("ledger sequence conflict: expected " + expected.rows[0]?.expected_sequence);
       }
 
       await client.query(
