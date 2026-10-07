@@ -84,7 +84,7 @@ test("complete chain: UK factor -> Data Intake -> Carbon Core -> Carbon Ledger -
   assert.equal(ledgerPersistence.events.length, 1);
 
   const stored = await persistence.getActivity("tenant-1", "uk-chain-2026");
-  assert.equal(stored?.calculationStatus, "calculated");
+  assert.equal(stored?.calculationStatus, "ready");
   assert.equal(stored?.factorId, ukGovernment2026ElectricityFactor.id);
   assert.equal(stored?.factorVersion, "2026");
 
