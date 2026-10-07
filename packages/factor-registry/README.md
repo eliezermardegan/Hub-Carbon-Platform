@@ -1,0 +1,1 @@
+# factor-registry\n\nVersioned emission-factor registry with provenance.\n
