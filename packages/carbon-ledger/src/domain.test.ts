@@ -8,9 +8,9 @@ import type { EvidenceReference } from "./index.js";
 class FakePersistence implements LedgerPersistence {
   events: PersistedLedgerEvent[] = [];
   audits: AuditRecord[] = [];
-  async appendEvent(event: PersistedLedgerEvent, audit: AuditRecord) {
+  async appendEvent(event: PersistedLedgerEvent, audit: AuditRecord): Promise<PersistedLedgerEvent | null> {
     if ((this.events.at(-1)?.eventHash ?? null) !== event.previousEntryHash) throw new Error("ledger head conflict");
-    this.events.push(structuredClone(event)); this.audits.push(structuredClone(audit));
+    this.events.push(structuredClone(event)); this.audits.push(structuredClone(audit)); return null;
   }
   async listEvents(tenantId: string) { return this.events.filter(e => e.tenantId === tenantId).map(e => structuredClone(e)); }
   async listAudit(tenantId: string) { return this.audits.filter(e => e.tenantId === tenantId).map(e => structuredClone(e)); }
