@@ -1,14 +1,21 @@
 # carbon-ledger
 
-Audit-oriented carbon ledger primitives connecting normalized activities, versioned emission factors, deterministic calculations and evidence.
+Audit-oriented carbon ledger connecting activities, versioned emission factors, deterministic calculations and evidence.
 
-## Design
+## Persistence boundary
 
-- Append-only entries with sequence numbers.
-- Exact factor ID/version and provenance snapshot per entry.
-- Deterministic calculation delegated to `carbon-core`.
-- Evidence references for invoices, receipts, meters, ERP records and supplier submissions.
-- SHA-256 hash chain with canonical serialization and verification.
-- Methodology version recorded on every entry.
+The production adapter must store events in PostgreSQL inside a transaction, allocate a per-tenant sequence while locking the tenant head, verify the previous hash, append the event and audit record atomically, and never update or delete historical events.
 
-This package is an in-memory domain primitive. Production persistence must add transactional storage, authorization, tenant isolation and immutable archival without mutating historical entries.
+Corrections use explicit restatement or reversal events. PostgreSQL Row Level Security (RLS) provides the database tenant-isolation boundary.
+
+## Event model
+
+- entry: original accounting event.
+- restatement: new calculation correcting a prior event without changing history.
+- reversal: compensating event referencing a prior event.
+
+Every event keeps the factor snapshot, methodology version and evidence references needed to reconstruct the calculation.
+
+## Production requirements
+
+Before invoices, ERP or NF-e integrations, add a real PostgreSQL adapter with migrations, transaction-level concurrency control, pooling, secrets management, backups/PITR, monitoring, retention and scheduled integrity verification.
