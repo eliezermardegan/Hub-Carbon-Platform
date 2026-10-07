@@ -15,6 +15,7 @@ class FakePersistence implements LedgerPersistence {
   async listEvents(tenantId: string) { return this.events.filter(e => e.tenantId === tenantId).map(e => structuredClone(e)); }
   async listAudit(tenantId: string) { return this.audits.filter(e => e.tenantId === tenantId).map(e => structuredClone(e)); }
   async getHead(tenantId: string) { return this.events.filter(e => e.tenantId === tenantId).at(-1)?.eventHash ?? null; }
+  async recordAudit(audit: AuditRecord) { this.audits.push(structuredClone(audit)); }
 }
 
 const factor: EmissionFactor = {
