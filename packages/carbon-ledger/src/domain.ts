@@ -55,8 +55,13 @@ function canonicalize(value: unknown): string {
 }
 
 function eventHash(event: Omit<DomainEvent, "eventHash">): string {
+  return eventHashFor(event);
+}
+
+function eventHashFor(event: Omit<DomainEvent, "eventHash">): string {
   return createHash("sha256").update(canonicalize(event), "utf8").digest("hex");
 }
+
 
 function requireTenantContext(context: LedgerCommandContext): void {
   if (!context.tenantId || !context.actorId) throw new Error("tenantId and actorId are required");
@@ -199,6 +204,53 @@ export class CarbonLedgerDomain {
     }
     await this.idempotency.put(idempotencyKey, context.tenantId, event);
     return event;
+  }
+
+  async verify(tenantId: string, actorId: string): Promise<{ valid: boolean; checkedEvents: number; error?: string }> {
+    if (!tenantId || !actorId) throw new Error("tenantId and actorId are required");
+    const events = await this.persistence.listEvents(tenantId);
+    let previous: string | null = null;
+
+    for (let i = 0; i < events.length; i++) {
+      const event = events[i];
+      if (event.sequence !== i + 1) return this.verificationFailure(tenantId, actorId, i, "sequence mismatch at " + event.id);
+      if (event.previousEntryHash !== previous) return this.verificationFailure(tenantId, actorId, i, "previous hash mismatch at " + event.id);
+      const { eventHash, ...unsigned } = event;
+      if (eventHash !== eventHashFor(unsigned)) return this.verificationFailure(tenantId, actorId, i, "event hash mismatch at " + event.id);
+
+      if (event.activity && event.factor && event.calculation) {
+        if (event.activity.factorId !== event.factor.id ||
+            event.activity.factorVersion !== event.factor.version ||
+            event.activity.factorValue !== event.factor.value ||
+            event.activity.factorUnit !== event.factor.factorUnit) {
+          return this.verificationFailure(tenantId, actorId, i, "factor snapshot mismatch at " + event.id);
+        }
+        const expected = calculateEmissions(event.activity);
+        if (expected.emissionsKgCo2e !== event.calculation.emissionsKgCo2e) {
+          return this.verificationFailure(tenantId, actorId, i, "calculation mismatch at " + event.id);
+        }
+      }
+
+      previous = eventHash;
+    }
+
+    await this.persistence.recordAudit({
+      id: crypto.randomUUID(),
+      tenantId,
+      actorId,
+      action: "verification",
+      recordedAt: new Date().toISOString(),
+      metadata: { checkedEvents: String(events.length), valid: "true" }
+    });
+    return { valid: true, checkedEvents: events.length };
+  }
+
+  private async verificationFailure(tenantId: string, actorId: string, checkedEvents: number, error: string) {
+    await this.persistence.recordAudit({
+      id: crypto.randomUUID(), tenantId, actorId, action: "verification",
+      recordedAt: new Date().toISOString(), metadata: { checkedEvents: String(checkedEvents), valid: "false", error }
+    });
+    return { valid: false, checkedEvents, error };
   }
 
   private async findEvent(tenantId: string, id: string): Promise<DomainEvent | null> {
