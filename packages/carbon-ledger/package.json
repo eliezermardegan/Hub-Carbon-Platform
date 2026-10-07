@@ -1,0 +1,9 @@
+{
+  "name": "@hub-carbon/carbon-ledger",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Append-only, hash-chained carbon ledger primitives connecting activities, factors, calculations and evidence.",
+  "type": "module",
+  "exports": { ".": "./dist/index.js" },
+  "scripts": { "test": "node --test" }
+}
