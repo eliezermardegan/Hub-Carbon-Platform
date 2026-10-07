@@ -1,0 +1,43 @@
+Hub-Carbon-Platform/
+├── apps/
+│   ├── web/
+│   ├── api/
+│   └── worker/
+├── packages/
+│   ├── carbon-core/
+│   ├── carbon-ledger/
+│   ├── scope3-engine/
+│   ├── factor-registry/
+│   ├── document-ai/
+│   ├── supplier-engine/
+│   ├── regulatory-engine/
+│   └── reporting-engine/
+├── integrations/
+│   ├── accounting/
+│   ├── erp/
+│   ├── invoices/
+│   ├── nf-e/
+│   ├── nfs-e/
+│   └── procurement/
+├── regulations/
+│   ├── global/
+│   ├── eu/
+│   ├── uk/
+│   └── brazil/
+├── factors/
+│   ├── global/
+│   ├── brazil/
+│   ├── eu/
+│   └── uk/
+├── legal/
+│   ├── SOURCE_MATRIX.md
+│   ├── THIRD_PARTY_LICENSES.md
+│   └── THIRD_PARTY_NOTICES.md
+├── docs/
+│   ├── architecture/
+│   └── methodology/
+├── tests/
+├── README.md
+├── CONTRIBUTING.md
+├── LICENSE
+└── .gitignore
