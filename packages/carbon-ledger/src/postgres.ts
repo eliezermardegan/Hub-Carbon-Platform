@@ -28,6 +28,14 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
       }
       await client.query("INSERT INTO carbon_ledger_tenant_heads (tenant_id, head_event_hash) VALUES ($1, NULL) ON CONFLICT (tenant_id) DO NOTHING", [event.tenantId]);
       await client.query("SELECT tenant_id FROM carbon_ledger_tenant_heads WHERE tenant_id = $1 FOR UPDATE", [event.tenantId]);
+      const existingAfterLock = await client.query<PersistedLedgerEvent>(
+        "SELECT id, tenant_id as \"tenantId\", actor_id as \"actorId\", event_type as \"eventType\", sequence, recorded_at as \"recordedAt\", activity, factor, calculation, evidence, methodology_version as \"methodologyVersion\", reason, replaces_event_id as \"replacesEventId\", previous_event_hash as \"previousEntryHash\", event_hash as \"eventHash\", idempotency_key as \"idempotencyKey\" FROM carbon_ledger_events WHERE tenant_id = $1 AND idempotency_key = $2",
+        [event.tenantId, event.idempotencyKey]
+      );
+      if (existingAfterLock.rows[0]) {
+        await client.query("COMMIT");
+        return existingAfterLock.rows[0];
+      }
       const head = await client.query<HeadRow>(
         "SELECT head_event_hash FROM carbon_ledger_tenant_heads WHERE tenant_id = $1",
         [event.tenantId]
