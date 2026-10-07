@@ -1,1 +1,3 @@
-# Global Regulations and Methodologies\n\nVersioned implementation rules and mappings. Do not copy protected standards text by default.\n
+# Global regulations and methodologies
+
+Versioned implementation rules and mappings. Do not copy protected standards text by default.
