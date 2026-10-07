@@ -5,6 +5,7 @@
 | CarbonInk | a8d8c758c0193a0a49c823f35491ae22632811c5 | third_party/carbonink/desktop/src/shared/emission-categories.ts; third_party/carbonink/desktop/src/shared/ulid.ts | MIT | **Imported with attribution** |
 | CarbonLedger | — | — | README says MIT; LICENSE not independently verified | **BLOCKED** |
 | GreenCalculus | — | — | MIT repository; datasets vary | Partial / gated |
+| UK Government GHG Conversion Factors 2026 | — | packages/factor-registry/src/uk-2026-electricity.ts | Open Government Licence v3.0 | **Imported with attribution; one normalized factor** |
 | Scope3 | — | — | Exact terms pending verification | **BLOCKED** |
 | GhgAccounting .NET | — | — | Exact terms pending verification | **BLOCKED** |
 | Ignite Carbon Accounting | — | — | Mixed; Exiobase-derived material CC BY-SA 4.0 | **BLOCKED for data copying** |
