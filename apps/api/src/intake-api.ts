@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { DataIntakeService } from "../../../packages/data-intake/src/service.ts";
-import { InMemoryDataIntakePersistence } from "../../packages/data-intake/src/persistence.ts";
+import { InMemoryDataIntakePersistence } from "../../../packages/data-intake/src/persistence.ts";
 
 export interface ApiDependencies {
   service: DataIntakeService;
