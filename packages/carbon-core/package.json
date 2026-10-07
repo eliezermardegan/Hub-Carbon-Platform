@@ -1,0 +1,9 @@
+{
+  "name": "@hub-carbon/carbon-core",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Deterministic GHG activity-to-emissions calculation primitives.",
+  "type": "module",
+  "exports": { ".": "./dist/index.js" },
+  "scripts": { "test": "node --test" }
+}
