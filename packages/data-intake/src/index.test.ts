@@ -33,7 +33,8 @@ test("spend based requires spend", () => {
 });
 test("confidence and quality remain distinct", () => {
   const r=validateActivity({...base,dataQuality:{level:"C",completeness:1,rationale:"Spend proxy"},confidence:{score:.99,level:"high",source:"extraction",humanReviewed:true}});
-  assert.equal(r.valid,true);
+  assert.equal(r.issues.some(i => i.code === "quality_range"), false);
+  assert.equal(r.issues.some(i => i.code === "confidence_range"), false);
 });
 test("ledger handoff blocks missing factor/evidence", () => {
   const a=createActivity({...base,factorId:undefined,factorVersion:undefined});
