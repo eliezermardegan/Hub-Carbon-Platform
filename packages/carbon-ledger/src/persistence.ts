@@ -27,6 +27,7 @@ export interface LedgerPersistence {
   listEvents(tenantId: string): Promise<PersistedLedgerEvent[]>;
   listAudit(tenantId: string): Promise<AuditRecord[]>;
   getHead(tenantId: string): Promise<string | null>;
+  recordAudit(audit: AuditRecord): Promise<void>;
 }
 
 export const POSTGRES_SCHEMA = "create extension if not exists pgcrypto;\n\ncreate table if not exists carbon_ledger_events (\n  id uuid primary key,\n  tenant_id uuid not null,\n  actor_id uuid not null,\n  event_type text not null check (event_type in ('entry','restatement','reversal')),\n  sequence bigint not null,\n  recorded_at timestamptz not null,\n  activity jsonb,\n  factor jsonb,\n  calculation jsonb,\n  evidence jsonb not null default '[]'::jsonb,\n  methodology_version text not null,\n  reason text,\n  replaces_event_id uuid,\n  previous_event_hash text,\n  event_hash text not null,\n  unique (tenant_id, sequence),\n  unique (tenant_id, event_hash),
