@@ -1,0 +1,2 @@
+import {createIntakeApi} from "./intake-api";
+test("health endpoint exists",async()=>{const service:any={ingestActivity:jest.fn()};const server=createIntakeApi({service});await new Promise<void>(resolve=>server.listen(0,resolve));const address=server.address() as any;const response=await fetch("http://127.0.0.1:"+address.port+"/health");expect(response.status).toBe(200);expect(await response.json()).toEqual({status:"ok",service:"data-intake"});server.close();});
