@@ -104,6 +104,7 @@ function baseEvent(
     ...(reason ? { reason } : {}),
     ...(replacesEventId ? { replacesEventId } : {}),
     previousEntryHash,
+    idempotencyKey: command.id,
   };
   return { ...unsigned, eventHash: eventHash(unsigned) };
 }
@@ -191,7 +192,11 @@ export class CarbonLedgerDomain {
       recordedAt: event.recordedAt,
       metadata: { methodologyVersion: event.methodologyVersion }
     };
-    await this.persistence.appendEvent(event, audit);
+    const persisted = await this.persistence.appendEvent(event, audit);
+    if (persisted) {
+      await this.idempotency.put(idempotencyKey, context.tenantId, persisted as DomainEvent);
+      return persisted as DomainEvent;
+    }
     await this.idempotency.put(idempotencyKey, context.tenantId, event);
     return event;
   }
