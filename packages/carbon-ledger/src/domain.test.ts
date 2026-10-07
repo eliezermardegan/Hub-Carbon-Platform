@@ -65,3 +65,12 @@ test("corrections require a reason", async () => {
   await assert.rejects(() => d.restate({id:"r1",activity,factor,replacesEventId:"a1",reason:" "},ctx), /reason is required/);
   await assert.rejects(() => d.reverse({id:"v1",targetEventId:"a1",reason:" "},ctx), /reason is required/);
 });
+
+
+test("verification validates chain, factor snapshot and calculation", async () => {
+  const p=new FakePersistence(), d=new CarbonLedgerDomain(p);
+  await d.append({id:"a1",activity,factor},ctx);
+  const result=await d.verify("tenant-a","auditor-a");
+  assert.deepEqual(result,{valid:true,checkedEvents:1});
+  assert.equal((await p.listAudit("tenant-a")).at(-1)?.action,"verification");
+});
