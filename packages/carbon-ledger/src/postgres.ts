@@ -114,6 +114,16 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
     return result.rows;
   }
 
+  async recordAudit(audit: AuditRecord): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO carbon_ledger_audit
+       (id, tenant_id, actor_id, action, event_id, recorded_at, metadata)
+       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)`,
+      [audit.id, audit.tenantId, audit.actorId, audit.action, audit.eventId ?? null,
+       audit.recordedAt, JSON.stringify(audit.metadata ?? {})]
+    );
+  }
+
   async getHead(tenantId: string): Promise<string | null> {
     const result = await this.pool.query<HeadRow>(
       "SELECT head_event_hash FROM carbon_ledger_tenant_heads WHERE tenant_id = $1",
