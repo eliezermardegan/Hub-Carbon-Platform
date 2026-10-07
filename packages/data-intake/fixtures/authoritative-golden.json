@@ -1,0 +1,11 @@
+{
+  "schemaVersion":"1.0",
+  "status":"fixture",
+  "notice":"Controlled validation fixtures. Values are not claimed to be authoritative emission factors.",
+  "cases":[
+    {"id":"S1-GAS-001","scope":1,"category":"stationary_combustion","quantity":1000,"unit":"m3","factorId":"fixture-s1-gas","factorVersion":"fixture-1","factorValue":2,"factorUnit":"kgCO2e/m3","expectedKgCO2e":2000,"source":{"name":"Hub Carbon synthetic validation fixture","url":"internal://golden/S1-GAS-001","license":"project-test","redistributionAllowed":true}},
+    {"id":"S2-ELEC-001","scope":2,"category":"electricity","quantity":10000,"unit":"kWh","factorId":"fixture-s2-electricity","factorVersion":"fixture-1","factorValue":0.5,"factorUnit":"kgCO2e/kWh","expectedKgCO2e":5000,"source":{"name":"Hub Carbon synthetic validation fixture","url":"internal://golden/S2-ELEC-001","license":"project-test","redistributionAllowed":true}},
+    {"id":"S3-C1-SPEND-001","scope":3,"category":"category_1_purchased_goods_and_services","quantity":100000,"unit":"BRL","factorId":"fixture-s3-c1","factorVersion":"fixture-1","factorValue":0.2,"factorUnit":"kgCO2e/BRL","expectedKgCO2e":20000,"source":{"name":"Hub Carbon synthetic validation fixture","url":"internal://golden/S3-C1-SPEND-001","license":"project-test","redistributionAllowed":true}},
+    {"id":"S3-C4-FREIGHT-001","scope":3,"category":"category_4_upstream_transportation_and_distribution","quantity":20000,"unit":"tonne-km","factorId":"fixture-s3-c4","factorVersion":"fixture-1","factorValue":0.1,"factorUnit":"kgCO2e/tonne-km","expectedKgCO2e":2000,"source":{"name":"Hub Carbon synthetic validation fixture","url":"internal://golden/S3-C4-FREIGHT-001","license":"project-test","redistributionAllowed":true}}
+  ]
+}
