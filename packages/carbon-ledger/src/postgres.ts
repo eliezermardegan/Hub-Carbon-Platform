@@ -19,7 +19,12 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
     try {
       await client.query("BEGIN");
       const existing = await client.query<PersistedLedgerEvent>(
-        "SELECT * FROM carbon_ledger_events WHERE tenant_id = $1 AND idempotency_key = $2",
+        `SELECT id, tenant_id as "tenantId", actor_id as "actorId", event_type as "eventType", sequence,
+        recorded_at as "recordedAt", activity, factor, calculation, evidence,
+        methodology_version as "methodologyVersion", reason, replaces_event_id as "replacesEventId",
+        previous_event_hash as "previousEntryHash", event_hash as "eventHash",
+        idempotency_key as "idempotencyKey"
+       FROM carbon_ledger_events WHERE tenant_id = $1 AND idempotency_key = $2`,
         [event.tenantId, event.idempotencyKey]
       );
       if (existing.rows[0]) {
