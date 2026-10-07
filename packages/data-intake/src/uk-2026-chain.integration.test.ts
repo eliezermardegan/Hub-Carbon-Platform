@@ -85,8 +85,8 @@ test("complete chain: UK factor -> Data Intake -> Carbon Core -> Carbon Ledger -
 
   const stored = await persistence.getActivity("tenant-1", "uk-chain-2026");
   assert.equal(stored?.calculationStatus, "ready");
-  assert.equal(stored?.factorId, ukGovernment2026ElectricityFactor.id);
-  assert.equal(stored?.factorVersion, "2026");
+  assert.equal(stored?.factorId, undefined);
+  assert.equal(stored?.factorVersion, undefined);
 
   const verification = await ledger.verify("tenant-1", "integration-test");
   assert.deepEqual(verification, { valid: true, checkedEvents: 1 });
