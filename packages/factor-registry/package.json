@@ -1,0 +1,9 @@
+{
+  "name": "@hub-carbon/factor-registry",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Versioned emission-factor registry with provenance and license metadata.",
+  "type": "module",
+  "exports": { ".": "./dist/index.js" },
+  "scripts": { "test": "node --test" }
+}
