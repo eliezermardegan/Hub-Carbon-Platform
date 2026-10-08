@@ -61,3 +61,19 @@ Regulatory inputs require the same discipline plus:
 - implementation status (draft, guidance, adopted, effective, superseded).
 
 A regulatory implementation must never rely on an undated or silently mutable source.
+
+## Emission-factor registry gate
+
+Every production emission factor must carry complete provenance in `packages/factor-registry` before it can be treated as importable:
+
+- publisher/source name and stable source URL;
+- exact dataset/document version;
+- legal basis and license/redistribution status;
+- source artifact SHA-256 when the factor is reproducible from an external artifact;
+- retrieval timestamp;
+- effective dates and geography;
+- original and normalized units;
+- explicit transformation description;
+- evidence reference linking the factor to its source record.
+
+A placeholder, invented, or malformed source hash is invalid. If an exact source artifact cannot be identified or legally verified, the factor must remain outside the verified/importable production set rather than silently substituting another source.
