@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { DataIntakeService } from "./service.js";
 import { InMemoryDataIntakePersistence } from "./persistence.js";
+import { InMemoryIdempotencyStore } from "./service.js";
 import type { LedgerEvent, LedgerPersistence } from "../../carbon-ledger/src/index.js";
 import { CarbonLedgerDomain } from "../../carbon-ledger/src/index.js";
 import { ademeV23_6UtilityUnder3_5tFactor } from "../../factor-registry/src/ademe-v23-6-utility.js";
@@ -27,7 +28,7 @@ class MemoryLedgerPersistence implements LedgerPersistence {
 test("runs ADEME factor through Data Intake, Carbon Core and Carbon Ledger", async () => {
   const persistence = new InMemoryDataIntakePersistence();
   const ledgerPersistence = new MemoryLedgerPersistence();
-  const ledger = new CarbonLedgerDomain(ledgerPersistence);
+  const ledger = new CarbonLedgerDomain(ledgerPersistence, new InMemoryIdempotencyStore());
   const service = new DataIntakeService(
     persistence,
     { resolve: async () => ademeV23_6UtilityUnder3_5tFactor },
