@@ -20,7 +20,7 @@ test("UK Government 2026 electricity factor flows through Carbon Core", () => {
   const result = calculateEmissions(activity);
 
   assert.equal(result.emissionsKgCo2e, 1309.6);
-  assert.equal(result.formula, "quantity × factorValue");
+  assert.equal(result.formula, `${activity.quantity} ${activity.unit} × ${activity.factorValue} ${activity.factorUnit}`);
   assert.equal(result.factorId, ukGovernment2026ElectricityFactor.id);
   assert.equal(result.factorVersion, "2026");
 });
