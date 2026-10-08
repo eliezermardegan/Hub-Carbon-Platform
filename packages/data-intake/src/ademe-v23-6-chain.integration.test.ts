@@ -76,10 +76,10 @@ test("runs ADEME factor through Data Intake, Carbon Core and Carbon Ledger", asy
   const events = await ledgerPersistence.listEvents("tenant-ademe");
   assert.equal(events.length, 1);
   assert.equal(events[0].previousEntryHash, null);
-  assert.equal(events[0].factorSnapshot?.id, ademeV23_6UtilityUnder3_5tFactor.id);
-  assert.equal(events[0].factorSnapshot?.version, "23.6");
-  assert.equal(events[0].factorSnapshot?.value, 0.235);
-  assert.equal(events[0].factorSnapshot?.provenance?.license, "Licence Ouverte / Open Licence 2.0");
+  assert.equal(events[0].factor?.id, ademeV23_6UtilityUnder3_5tFactor.id);
+  assert.equal(events[0].factor?.version, "23.6");
+  assert.equal(events[0].factor?.value, 0.235);
+  assert.equal(events[0].factor?.provenance?.license, "Licence Ouverte / Open Licence 2.0");
 
   const verification = await ledger.verify("tenant-ademe");
   assert.deepEqual(verification, { valid: true, checkedEvents: 1 });
