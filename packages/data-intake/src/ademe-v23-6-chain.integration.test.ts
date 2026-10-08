@@ -2,22 +2,32 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { DataIntakeService } from "./service.js";
 import { InMemoryDataIntakePersistence } from "./persistence.js";
-import { InMemoryIdempotencyStore } from "../../carbon-ledger/src/domain.js";
-import type { LedgerEvent, LedgerPersistence } from "../../carbon-ledger/src/index.js";
-import { CarbonLedgerDomain } from "../../carbon-ledger/src/index.js";
+import type { PersistedLedgerEvent, LedgerPersistence, AuditRecord } from "../../carbon-ledger/src/persistence.js";
+import { CarbonLedgerDomain, InMemoryIdempotencyStore } from "../../carbon-ledger/src/domain.js";
 import { ademeV23_6UtilityUnder3_5tFactor } from "../../factor-registry/src/ademe-v23-6-utility.js";
 
 class MemoryLedgerPersistence implements LedgerPersistence {
-  readonly events: LedgerEvent[] = [];
+  readonly events: PersistedLedgerEvent[] = [];
+  readonly audits: AuditRecord[] = [];
 
-  async append(event: LedgerEvent): Promise<void> {
+  async appendEvent(event: PersistedLedgerEvent, audit: AuditRecord): Promise<PersistedLedgerEvent | null> {
     const head = this.events.filter(e => e.tenantId === event.tenantId).at(-1)?.eventHash ?? null;
     if (head !== event.previousEntryHash) throw new Error("ledger head conflict");
-    this.events.push(event);
+    this.events.push(structuredClone(event));
+    this.audits.push(structuredClone(audit));
+    return null;
   }
 
-  async listByTenant(tenantId: string): Promise<LedgerEvent[]> {
-    return this.events.filter(event => event.tenantId === tenantId);
+  async listEvents(tenantId: string): Promise<PersistedLedgerEvent[]> {
+    return this.events.filter(event => event.tenantId === tenantId).map(event => structuredClone(event));
+  }
+
+  async listAudit(tenantId: string): Promise<AuditRecord[]> {
+    return this.audits.filter(audit => audit.tenantId === tenantId).map(audit => structuredClone(audit));
+  }
+
+  async recordAudit(audit: AuditRecord): Promise<void> {
+    this.audits.push(structuredClone(audit));
   }
 
   async getHead(tenantId: string): Promise<string | null> {
