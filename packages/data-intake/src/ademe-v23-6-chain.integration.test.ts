@@ -26,7 +26,8 @@ class MemoryLedgerPersistence implements LedgerPersistence {
 
 test("runs ADEME factor through Data Intake, Carbon Core and Carbon Ledger", async () => {
   const persistence = new InMemoryDataIntakePersistence();
-  const ledger = new CarbonLedgerDomain(new MemoryLedgerPersistence());
+  const ledgerPersistence = new MemoryLedgerPersistence();
+  const ledger = new CarbonLedgerDomain(ledgerPersistence);
   const service = new DataIntakeService(
     persistence,
     { resolve: async () => ademeV23_6UtilityUnder3_5tFactor },
@@ -61,7 +62,7 @@ test("runs ADEME factor through Data Intake, Carbon Core and Carbon Ledger", asy
   assert.equal(result.calculation?.factorId, ademeV23_6UtilityUnder3_5tFactor.id);
   assert.equal(result.calculation?.factorVersion, "23.6");
 
-  const events = await ledger.listEvents("tenant-ademe");
+  const events = await ledgerPersistence.listEvents("tenant-ademe");
   assert.equal(events.length, 1);
   assert.equal(events[0].previousEntryHash, null);
   assert.equal(events[0].factorSnapshot?.id, ademeV23_6UtilityUnder3_5tFactor.id);
