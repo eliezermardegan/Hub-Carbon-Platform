@@ -1,34 +1,38 @@
 # Third-Party Notices
 
-This document records third-party material referenced, transformed, or included by Hub Carbon Platform.
+This file records third-party material and the legal boundary for redistribution.
 
-## Project code
+## Project source code
 
-Unless a more specific notice applies, repository source code is licensed under the MIT License. See `LICENSE`.
+Project-authored source code is licensed under the MIT License unless a more specific notice applies.
 
 ## European Commission CBAM worked example
 
-The repository contains normalized numerical values from an official European Commission CBAM worked example solely for deterministic regression testing. The original source document is not redistributed.
+The repository contains normalized numerical values derived from an official European Commission CBAM worked example for regression testing. The original PDF is not redistributed by this repository.
 
-- Publisher: European Commission
-- Document: *Guidance document on CBAM implementation for installation operators outside the EU*
-- Section: 7.2.2.2, Example 2
-- Source URL: https://taxation-customs.ec.europa.eu/system/files/2023-12/Guidance%20document%20on%20CBAM%20implementation%20for%20installation%20operators%20outside%20the%20EU.pdf
-- Repository boundary: normalized factual test values and provenance metadata only
-- Limitation: these values are not asserted to be the definitive current CBAM methodology
+- Source: European Commission, CBAM transitional-period guidance, section 7.2.2.2, tables 7-11 to 7-14.
+- Use: mathematical/regression test provenance only.
+- Legal boundary: the presence of a reference or normalized factual value does not grant a general right to redistribute the source publication.
+- Source artifact hash: pending exact downloaded artifact.
 
 ## ADEME Base Carbone
 
-Repository history indicates integration of material associated with ADEME Base Carbone V23.6. Redistribution and attribution terms must be verified for each exact artifact before release. The applicable source, version, legal basis, and artifact hash must be recorded in `legal/SOURCE_MATRIX.md`.
+Historical repository commits indicate integration of ADEME Base Carbone V23.6 material. Redistribution and attribution terms must be verified against the exact artifact before release.
 
-## GHG Protocol, IPCC and US EPA references
+Each redistributed artifact must be registered in `legal/SOURCE_MATRIX.md` with source, version, legal basis, copyright/attribution, transformation, and SHA256 where reproducibility depends on the artifact.
 
-The factor registry documentation references authoritative emissions-factor sources. References do not by themselves grant redistribution rights. Any copied or transformed dataset material must be checked against the exact source license and recorded in `legal/SOURCE_MATRIX.md`.
+## Standards and reference datasets
+
+References to GHG Protocol, IPCC, US EPA, or other authorities do not by themselves grant redistribution rights. Any copied, transformed, or embedded third-party data must be reviewed and registered before release.
 
 ## npm dependencies
 
-The dependency graph is pinned by `package-lock.json`. Dependency licenses and notices are third-party publisher responsibilities and must be verified automatically as part of release governance. The repository must not assume that the project MIT license changes the license of dependency code.
+Runtime and development dependencies are pinned through `package-lock.json`. Dependency licenses remain attributable to their respective publishers; the project's MIT license does not relicense dependency code.
+
+The CI pipeline performs dependency review and rejects high-severity dependency findings and selected strong copyleft licenses (`GPL-3.0-only`, `GPL-3.0-or-later`, `AGPL-3.0-only`, `AGPL-3.0-or-later`) unless this policy is explicitly revised.
+
+The CI pipeline also generates a CycloneDX SBOM for the npm dependency graph on pull requests.
 
 ## Maintenance rule
 
-When a new third-party artifact is imported, update this file and `legal/SOURCE_MATRIX.md` in the same pull request. Preserve any notice required by the upstream license.
+When a new third-party artifact is introduced, update `legal/SOURCE_MATRIX.md` and this file in the same pull request. Do not invent licenses, source hashes, or redistribution permissions.
