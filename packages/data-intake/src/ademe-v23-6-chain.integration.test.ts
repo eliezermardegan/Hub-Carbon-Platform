@@ -81,6 +81,6 @@ test("runs ADEME factor through Data Intake, Carbon Core and Carbon Ledger", asy
   assert.equal(events[0].factor?.value, 0.235);
   assert.equal(events[0].factor?.provenance?.license, "Licence Ouverte / Open Licence 2.0");
 
-  const verification = await ledger.verify("tenant-ademe");
+  const verification = await ledger.verify("tenant-ademe", "test-suite");
   assert.deepEqual(verification, { valid: true, checkedEvents: 1 });
 });
