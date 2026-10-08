@@ -1,0 +1,28 @@
+name: Factor Provenance Gate
+
+on:
+  pull_request:
+    paths:
+      - "factors/**"
+      - "packages/factor-registry/**"
+      - "scripts/verify-factor-provenance.mjs"
+      - ".github/workflows/factor-provenance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "factors/**"
+      - "packages/factor-registry/**"
+      - "scripts/verify-factor-provenance.mjs"
+      - ".github/workflows/factor-provenance.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  factor-provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Verify factor provenance
+        run: node scripts/verify-factor-provenance.mjs
