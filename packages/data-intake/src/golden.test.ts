@@ -13,6 +13,6 @@ for (const c of cases) {
   test(c.name + " reproduces declared expected emissions", () => {
     const result = calculateEmissions({id:c.name,scope:c.scope,category:c.name,quantity:c.quantity,unit:c.unit,method:"activity_based",factorId:c.factorId,factorValue:c.factorValue,factorUnit:c.factorUnit,factorVersion:"fixture-1"});
     assert.equal(result.emissionsKgCo2e,c.expected);
-    assert.equal(result.formula,"quantity × factorValue");
+    assert.equal(result.formula, `${c.quantity} ${c.unit} × ${c.factorValue} ${c.factorUnit}`);
   });
 }
