@@ -20,15 +20,27 @@ const factor: EmissionFactor = {
   provenance: {
     sourceName: "Synthetic test source",
     sourceUrl: "https://example.invalid/factor",
+    sourceVersion: "2025-test",
     license: "TEST",
+    legalBasis: "Synthetic test data permission",
     attributionRequired: false,
     redistributionAllowed: true,
-    retrievedAt: "2026-01-01T00:00:00Z"
+    sourceContentSha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    retrievedAt: "2026-01-01T00:00:00Z",
+    geography: "US",
+    originalUnit: "m3",
+    normalizedUnit: "kgCO2e/m3",
+    transformation: "None; value reproduced as published.",
+    evidenceRef: "test://synthetic-factor/2025-test"
   }
 };
 
-test("requires provenance metadata", () => {
+test("requires complete provenance metadata", () => {
   assert.doesNotThrow(() => assertValidFactor(factor));
+  assert.throws(() => assertValidFactor({
+    ...factor,
+    provenance: { ...factor.provenance, sourceContentSha256: "pending" }
+  }), /sourceContentSha256 must be a SHA-256 hex digest/);
 });
 
 test("matches factors by scope, geography and effective date", () => {
