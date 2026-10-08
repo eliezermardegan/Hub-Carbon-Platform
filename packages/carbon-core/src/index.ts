@@ -11,7 +11,7 @@ export type MassUnit = "kg" | "t" | "g";
 export type VolumeUnit = "L" | "m3";
 export type EnergyUnit = "kWh" | "MWh" | "MJ";
 export type DistanceUnit = "km" | "mi";
-export type ActivityUnit = MassUnit | VolumeUnit | EnergyUnit | DistanceUnit | "BRL" | "USD";
+export type ActivityUnit = MassUnit | VolumeUnit | EnergyUnit | DistanceUnit | "BRL" | "USD" | "tonne-km";
 export type EmissionsUnit = "kgCO2e" | "tCO2e" | "gCO2e";
 
 export interface ActivityRecord {
@@ -71,6 +71,8 @@ function parseFactorUnit(factorUnit: string): ParsedFactorUnit {
 }
 
 function convertActivityQuantity(quantity: number, fromUnit: string, toUnit: string): number {
+  if (fromUnit === toUnit) return quantity;
+
   const conversions = activityConversions[fromUnit]?.[toUnit];
   if (conversions === undefined) {
     throw new Error(`Incompatible activity units: ${fromUnit} cannot be converted to ${toUnit}`);
