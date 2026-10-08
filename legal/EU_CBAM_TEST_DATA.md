@@ -14,7 +14,7 @@ methodology for the EU CBAM definitive period.
 - Publisher: European Commission, Directorate-General for Taxation and Customs Union
 - Document: *Guidance document on CBAM implementation for installation operators outside the EU*
 - Section: 7.2.2.2, "Example 2 – EAF and conversion to iron or steel products"
-- Tables: 7-9 and 7-10
+- Tables: 7-11, 7-12, 7-13 and 7-14
 - Official source:
   https://taxation-customs.ec.europa.eu/system/files/2023-12/Guidance%20document%20on%20CBAM%20implementation%20for%20installation%20operators%20outside%20the%20EU.pdf
 
@@ -26,13 +26,13 @@ as a **transitional-period worked example**.
 
 The official example provides:
 
-- 4,800,000 t/year total steel products
-- 7,387,085 tCO2/year direct emissions
-- 976,919 tCO2/year indirect emissions
-- 1.539 tCO2/t specific direct embedded emissions
-- 0.204 tCO2/t specific indirect embedded emissions
-- 1.743 tCO2/t specific total embedded emissions
-- for a 10,000 t import: 17,430 tCO2 total embedded emissions
+- 1,133,000 t/year total steel products in process 2
+- EAF process-2 direct specific embedded emissions: 1.440 tCO2/t
+- EAF process-2 indirect specific embedded emissions: 1.732 tCO2/t
+- 3.171 tCO2/t specific total embedded emissions (1.440 direct + 1.732 indirect)
+- 100 t import example: 144 tCO2 direct + 173.2 tCO2 indirect = 317.2 tCO2 total
+
+
 
 ## Reuse boundary
 
