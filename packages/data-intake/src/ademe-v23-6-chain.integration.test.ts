@@ -1,10 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  DataIntakeService,
-  InMemoryDataIntakePersistence,
-  InMemoryIdempotencyStore
-} from "./index.js";
+import { DataIntakeService } from "./service.js";
+import { InMemoryDataIntakePersistence } from "./persistence.js";
+import { InMemoryIdempotencyStore } from "./service.js";
 import type { LedgerEvent, LedgerPersistence } from "../../carbon-ledger/src/index.js";
 import { CarbonLedgerDomain } from "../../carbon-ledger/src/index.js";
 import { ademeV23_6UtilityUnder3_5tFactor } from "../../factor-registry/src/ademe-v23-6-utility.js";
