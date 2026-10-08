@@ -118,3 +118,6 @@ export function createActivity(input:ActivityInput):ActivityRecord {
   const v=validateActivity(activity); if(!v.valid) throw new Error(v.issues.filter(i=>i.severity==="error").map(i=>i.message).join("; ")); return activity;
 }
 function randomId():string { return globalThis.crypto?.randomUUID?.()??`activity_${Date.now()}_${Math.random().toString(36).slice(2)}`; }
+
+export { DataIntakeService } from "./service.js";
+export type { FactorResolver, IntakeServiceContext, IntakeResult } from "./service.js";

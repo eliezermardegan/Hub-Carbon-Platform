@@ -25,3 +25,4 @@ export class DataIntakeService {
  async registerDocument(document:SourceDocument){await this.persistence.saveDocument(document)}
  async registerEvidence(evidence:Evidence){await this.persistence.saveEvidence(evidence)}
 }
+export default DataIntakeService;

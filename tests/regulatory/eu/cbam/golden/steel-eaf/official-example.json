@@ -1,0 +1,38 @@
+{
+  "source": {
+    "publisher": "European Commission",
+    "document": "Guidance document on CBAM implementation for installation operators outside the EU",
+    "sourceUrl": "https://taxation-customs.ec.europa.eu/system/files/2023-12/Guidance%20document%20on%20CBAM%20implementation%20for%20installation%20operators%20outside%20the%20EU.pdf",
+    "sourceSection": "7.2.2.2 Example 2 – EAF and conversion to iron or steel products",
+    "sourceTables": ["Table 7-11", "Table 7-12", "Table 7-13", "Table 7-14"],
+    "sourceStatus": "official worked example; transitional-period guidance",
+    "retrievedAt": "2026-10-08",
+    "sourceContentSha256": null,
+    "reuseBasis": "Normalized factual test values only; original PDF is not redistributed by this fixture."
+  },
+  "scenario": {
+    "jurisdiction": "EU",
+    "regulation": "CBAM",
+    "methodologyContext": "transitional-period worked example",
+    "sector": "iron-and-steel",
+    "productionRoute": "EAF",
+    "product": "iron-or-steel-products",
+    "importQuantity": 100,
+    "importQuantityUnit": "t"
+  },
+  "inputs": {
+    "specificDirectEmbeddedEmissions": 1.440,
+    "specificIndirectEmbeddedEmissions": 1.732,
+    "specificEmbeddedEmissionsUnit": "tCO2/t"
+  },
+  "expected": {
+    "specificDirectEmbeddedEmissions": 1.440,
+    "specificIndirectEmbeddedEmissions": 1.732,
+    "specificTotalEmbeddedEmissions": 3.171,
+    "specificEmbeddedEmissionsUnit": "tCO2/t",
+    "importDirectEmbeddedEmissions": 144,
+    "importIndirectEmbeddedEmissions": 173.2,
+    "importTotalEmbeddedEmissions": 317.2,
+    "importEmbeddedEmissionsUnit": "tCO2"
+  }
+}
