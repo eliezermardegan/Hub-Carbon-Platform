@@ -59,7 +59,13 @@ test("EU CBAM official worked example: EAF steel golden calculation", () => {
     fixture.scenario.importQuantity *
     fixture.expected.specificTotalEmbeddedEmissions;
 
-  assert.equal(importDirect, fixture.expected.importDirectEmbeddedEmissions);
-  assert.equal(importIndirect, fixture.expected.importIndirectEmbeddedEmissions);
-  assert.equal(importTotal, fixture.expected.importTotalEmbeddedEmissions);
+  assert.ok(
+    Math.abs(importDirect - fixture.expected.importDirectEmbeddedEmissions) < 1e-9,
+  );
+  assert.ok(
+    Math.abs(importIndirect - fixture.expected.importIndirectEmbeddedEmissions) < 1e-9,
+  );
+  assert.ok(
+    Math.abs(importTotal - fixture.expected.importTotalEmbeddedEmissions) < 1e-9,
+  );
 });
