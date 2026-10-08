@@ -31,20 +31,12 @@ const fixture = JSON.parse(fs.readFileSync(fixturePath, "utf8")) as GoldenFixtur
 test("EU CBAM official worked example: EAF steel golden calculation", () => {
   const directSpecific = fixture.inputs.specificDirectEmbeddedEmissions;
   const indirectSpecific = fixture.inputs.specificIndirectEmbeddedEmissions;
-  const totalSpecific = directSpecific + indirectSpecific;
 
-  assert.equal(
-    Number(directSpecific.toFixed(3)),
-    fixture.expected.specificDirectEmbeddedEmissions,
-  );
-  assert.equal(
-    Number(indirectSpecific.toFixed(3)),
-    fixture.expected.specificIndirectEmbeddedEmissions,
-  );
-  assert.equal(
-    Number(totalSpecific.toFixed(3)),
-    fixture.expected.specificTotalEmbeddedEmissions,
-  );
+  assert.equal(directSpecific, fixture.expected.specificDirectEmbeddedEmissions);
+  assert.equal(indirectSpecific, fixture.expected.specificIndirectEmbeddedEmissions);
+  // The Commission reports the total using underlying unrounded values; do not
+  // recompute 3.171 by adding the displayed 1.440 + 1.732 values (3.172).
+  assert.equal(fixture.expected.specificTotalEmbeddedEmissions, 3.171);
 
   const importDirect =
     fixture.scenario.importQuantity *
@@ -52,9 +44,7 @@ test("EU CBAM official worked example: EAF steel golden calculation", () => {
   const importIndirect =
     fixture.scenario.importQuantity *
     fixture.expected.specificIndirectEmbeddedEmissions;
-  const importTotal =
-    fixture.scenario.importQuantity *
-    fixture.expected.specificTotalEmbeddedEmissions;
+  const importTotal = importDirect + importIndirect;
 
   assert.ok(
     Math.abs(importDirect - fixture.expected.importDirectEmbeddedEmissions) < 1e-9,
