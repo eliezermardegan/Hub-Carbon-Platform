@@ -5,9 +5,8 @@ import test from "node:test";
 
 type GoldenFixture = {
   inputs: {
-    totalGoodsProduced: number;
-    totalDirectEmissions: number;
-    totalIndirectEmissions: number;
+    specificDirectEmbeddedEmissions: number;
+    specificIndirectEmbeddedEmissions: number;
   };
   scenario: {
     importQuantity: number;
