@@ -1,0 +1,18 @@
+{
+  "id": "ademe.base-carbone.v23.6.utility-under-3-5t.hydrogen-smr",
+  "sourceName": "ADEME Base Carbone",
+  "sourceUrl": "https://data.ademe.fr/datasets/base-carboner",
+  "sourceVersion": "Base Carbone V23.6",
+  "publisher": "ADEME",
+  "recordId": "28276",
+  "name": "Utilitaire <3,5t - Hydrogène SMR gaz naturel centralisé",
+  "value": 0.235,
+  "originalUnit": "kgCO2e/km",
+  "normalizedUnit": "kgCO2e/km",
+  "geography": "France continentale, hors Corse",
+  "boundary": "Énergie, cycle de vie complet",
+  "referenceYear": 2021,
+  "license": "Licence Ouverte / Open Licence (Etalab)",
+  "evidenceRef": "ADEME Base Carbone record 28276",
+  "sourceSnapshotSha256": "9aa6c68a0f6aa1c30be1befc3f8a3b78d95b83b40c0c225cbfe29ede59d7ffea"
+}
