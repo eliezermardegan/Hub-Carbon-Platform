@@ -21,12 +21,9 @@
     "importQuantityUnit": "t"
   },
   "inputs": {
-    "totalGoodsProduced": 1133000,
-    "totalGoodsProducedUnit": "t/year",
-    "totalDirectEmissions": 1440000,
-    "totalDirectEmissionsUnit": "tCO2/year",
-    "totalIndirectEmissions": 1962356,
-    "totalIndirectEmissionsUnit": "tCO2/year"
+    "specificDirectEmbeddedEmissions": 1.440,
+    "specificIndirectEmbeddedEmissions": 1.732,
+    "specificEmbeddedEmissionsUnit": "tCO2/t"
   },
   "expected": {
     "specificDirectEmbeddedEmissions": 1.440,
