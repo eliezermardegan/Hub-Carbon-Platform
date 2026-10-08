@@ -10,7 +10,7 @@ class MemoryLedgerPersistence implements LedgerPersistence {
   readonly events: LedgerEvent[] = [];
 
   async append(event: LedgerEvent): Promise<void> {
-    const head = this.events.at(-1)?.eventHash ?? null;
+    const head = this.events.filter(e => e.tenantId === event.tenantId).at(-1)?.eventHash ?? null;
     if (head !== event.previousEntryHash) throw new Error("ledger head conflict");
     this.events.push(event);
   }
@@ -26,10 +26,7 @@ class MemoryLedgerPersistence implements LedgerPersistence {
 
 test("runs ADEME factor through Data Intake, Carbon Core and Carbon Ledger", async () => {
   const persistence = new InMemoryDataIntakePersistence();
-  const ledger = new CarbonLedgerDomain({
-    persistence: new MemoryLedgerPersistence()
-  });
-
+  const ledger = new CarbonLedgerDomain(new MemoryLedgerPersistence());
   const service = new DataIntakeService(
     persistence,
     { resolve: async () => ademeV23_6UtilityUnder3_5tFactor },
@@ -39,30 +36,25 @@ test("runs ADEME factor through Data Intake, Carbon Core and Carbon Ledger", asy
   const result = await service.ingestActivity({
     companyId: "tenant-ademe",
     reportingPeriodId: "period-2026",
-    activity: {
-      id: "activity-ademe-utility",
-      scope: 3,
-      category: "scope3.category4.upstream_transport_and_distribution",
-      quantity: 1000,
-      unit: "km",
-      method: "activity_based",
-      dataAvailability: "provided",
-      dataQuality: { level: "A", completeness: 1, rationale: "ADEME validation fixture" },
-      confidence: { score: 1, level: "high", source: "manual", humanReviewed: true },
-      evidenceIds: ["evidence-ademe"],
-      classificationStatus: "classified",
-      calculationStatus: "ready",
-      idempotencyKey: "activity-ademe-utility"
-    },
-    { tenantId: "tenant-ademe", actorId: "test-suite", methodologyVersion: "ademe-base-carbone-v23.6", now: "2026-10-08T00:00:00Z" }
-  );
-
-  const evidence = { {
-      sourceType: "test-fixture",
-      sourceReference: "ADEME Base Carbone V23.6 record 28276",
-      contentHash: "synthetic-ademe-chain-fixture"
-    }
-  );
+    scope: 3,
+    scope3Category: 4,
+    activityType: "upstream_transportation_and_distribution",
+    quantity: 1000,
+    unit: "km",
+    method: "activity_based",
+    dataAvailability: "provided",
+    dataQuality: { level: "A", completeness: 1, rationale: "ADEME validation fixture" },
+    confidence: { score: 1, level: "high", source: "manual", humanReviewed: true },
+    evidenceIds: ["evidence-ademe"],
+    classificationStatus: "classified",
+    calculationStatus: "ready",
+    idempotencyKey: "activity-ademe-utility"
+  }, {
+    tenantId: "tenant-ademe",
+    actorId: "test-suite",
+    methodologyVersion: "ademe-base-carbone-v23.6",
+    now: "2026-10-08T00:00:00Z"
+  });
 
   assert.equal(result.activity.calculationStatus, "calculated");
   assert.equal(result.calculation?.emissionsKgCo2e, 235);
