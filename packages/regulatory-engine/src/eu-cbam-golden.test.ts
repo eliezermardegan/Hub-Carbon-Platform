@@ -29,10 +29,8 @@ const fixturePath = path.resolve(
 const fixture = JSON.parse(fs.readFileSync(fixturePath, "utf8")) as GoldenFixture;
 
 test("EU CBAM official worked example: EAF steel golden calculation", () => {
-  const directSpecific =
-    fixture.inputs.totalDirectEmissions / fixture.inputs.totalGoodsProduced;
-  const indirectSpecific =
-    fixture.inputs.totalIndirectEmissions / fixture.inputs.totalGoodsProduced;
+  const directSpecific = fixture.inputs.specificDirectEmbeddedEmissions;
+  const indirectSpecific = fixture.inputs.specificIndirectEmbeddedEmissions;
   const totalSpecific = directSpecific + indirectSpecific;
 
   assert.equal(
