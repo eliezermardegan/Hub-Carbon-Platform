@@ -14,28 +14,24 @@ function fakePool(queries: string[]): PgPool {
     },
     release() {}
   };
-  return {
-    async query() { return { rows: [], rowCount: 0 }; },
-    async connect() { return client; }
-  };
+  return { async query() { return { rows: [], rowCount: 0 }; }, async connect() { return client; } };
 }
 
-test("schema uses transaction-local tenant context and fail-closed RLS", async () => {
+test("tenant query mismatch fails before acquiring a database connection", async () => {
   const queries: string[] = [];
-  const persistence = new PostgresLedgerPersistence(fakePool(queries), {
-    getTrustedTenantContext: () => ({ tenantId, actorId })
-  });
-
+  const persistence = new PostgresLedgerPersistence(fakePool(queries), { getTrustedTenantContext: () => ({ tenantId, actorId }) });
   await assert.rejects(() => persistence.listEvents("33333333-3333-4333-8333-333333333333"), /does not match trusted context/);
   assert.equal(queries.length, 0);
 });
 
+test("invalid trusted tenant identifiers fail closed", async () => {
+  const persistence = new PostgresLedgerPersistence(fakePool([]), { getTrustedTenantContext: () => ({ tenantId: "not-a-uuid", actorId }) });
+  await assert.rejects(() => persistence.listEvents("not-a-uuid"), /tenantId must be a UUID/);
+});
+
 test("trusted tenant context is established after BEGIN on the same client", async () => {
   const queries: string[] = [];
-  const persistence = new PostgresLedgerPersistence(fakePool(queries), {
-    getTrustedTenantContext: () => ({ tenantId, actorId })
-  });
-
+  const persistence = new PostgresLedgerPersistence(fakePool(queries), { getTrustedTenantContext: () => ({ tenantId, actorId }) });
   await persistence.listEvents(tenantId);
   assert.equal(queries[0], "BEGIN");
   assert.match(queries[1], /set_config\('app\.tenant_id'/);
