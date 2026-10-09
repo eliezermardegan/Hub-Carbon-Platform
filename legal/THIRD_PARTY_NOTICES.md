@@ -17,9 +17,11 @@ The repository contains normalized numerical values derived from an official Eur
 
 ## ADEME Base Carbone
 
-Historical repository commits indicate integration of ADEME Base Carbone V23.6 material. Redistribution and attribution terms must be verified against the exact artifact before release.
+The ADEME V23.6 factor candidate is currently **blocked**. The exact upstream artifact and record have not been independently obtained and verified, so no source-content hash is claimed and redistribution is disabled. It is excluded from normal factor lookup and calculations. Before enabling it, verify the exact record, numeric value, source artifact SHA-256, applicable licence, attribution terms, and transformation.
 
-Each redistributed artifact must be registered in `legal/SOURCE_MATRIX.md` with source, version, legal basis, copyright/attribution, transformation, and SHA256 where reproducibility depends on the artifact.
+## UK DESNZ 2026 conversion factors
+
+The UK electricity factor candidate is currently **blocked**. The official publication page lists a flat file updated in July 2026; the exact file and factor row have not yet been obtained and verified. No source-content hash is claimed and redistribution is disabled. Verify the updated artifact, exact row, factor value and gas breakdown, licence applicability, and attribution terms before enabling it.
 
 ## Standards and reference datasets
 
