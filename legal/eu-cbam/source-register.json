@@ -119,6 +119,21 @@
       "retrievedAt": "2026-10-09",
       "status": "guidance-not-substitute-for-binding-act",
       "contentSha256": null
+    },
+    {
+      "sourceId": "EU-CBAM-CERTIFICATE-PRICE-2025-2548",
+      "kind": "implementing-regulation",
+      "identifier": "EU 2025/2548",
+      "celex": "32025R2548",
+      "eli": "https://eur-lex.europa.eu/eli/reg_impl/2025/2548/oj",
+      "publisher": "European Commission",
+      "adoptedAt": "2025-12-10",
+      "publishedAt": "2025-12-22",
+      "entersIntoForceAt": "2025-12-25",
+      "appliesFrom": "2026-01-01",
+      "status": "verify-current-consolidated-text",
+      "provisionLocatorRequired": true,
+      "note": "Certificate price calculation/publication, not CBAM declarations; quarterly pricing in 2026 and weekly methodology from 2027."
     }
   ],
   "provenancePolicy": {
