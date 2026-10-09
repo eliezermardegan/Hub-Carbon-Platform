@@ -24,7 +24,7 @@ test("does not resolve the 2026 factor outside its effective year", () => {
 
 test("records UK source and licence claims as unverified", () => {
   assert.equal(ukGovernment2026ElectricityFactor.provenance.sourceVersion.startsWith("2026"), true);
-  assert.match(ukGovernment2026ElectricityFactor.provenance.sourceDocument ?? "", /unverified/i);
+  assert.match(ukGovernment2026ElectricityFactor.provenance.sourceDocument ?? "", /not yet verified|unverified/i);
   assert.equal(ukGovernment2026ElectricityFactor.provenance.redistributionAllowed, false);
   assert.equal(ukGovernment2026ElectricityFactor.provenance.attributionRequired, true);
 });
