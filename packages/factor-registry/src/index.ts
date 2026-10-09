@@ -100,6 +100,8 @@ export function assertValidFactor(factor: EmissionFactor): void {
 }
 
 export function factorMatches(factor: EmissionFactor, query: FactorQuery): boolean {
+  // Blocked entries remain inspectable only through an explicit review query.
+  if (factor.status === "blocked" && query.status !== "blocked") return false;
   if (query.category && factor.category !== query.category) return false;
   if (query.scope && factor.scope !== query.scope) return false;
   if (query.geography && factor.geography !== query.geography) return false;
