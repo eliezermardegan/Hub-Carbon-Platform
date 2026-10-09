@@ -1,5 +1,5 @@
 import { calculateEmissions } from "../../carbon-core/src/index.js";
-import { type EmissionFactor } from "../../factor-registry/src/index.js";
+import { factorIsImportable, type EmissionFactor } from "../../factor-registry/src/index.js";
 import { type CarbonLedgerDomain, type DomainEvent, type LedgerCommandContext } from "../../carbon-ledger/src/domain.js";
 import { createActivity, type ActivityInput, type ActivityRecord, type Evidence, type LedgerHandoff, type SourceDocument, toLedgerHandoff } from "./index.js";
 import type { DataIntakePersistence } from "./persistence.js";
@@ -12,7 +12,7 @@ export class DataIntakeService {
   if(input.companyId!==context.tenantId) throw new Error("activity company does not match tenant");
   let activity=createActivity(input); await this.persistence.saveActivity(activity);
   if(activity.classificationStatus!=="classified"||activity.dataAvailability==="not_available") return {activity,handoff:toLedgerHandoff(activity)};
-  const factor=await this.factorResolver.resolve(activity); if(!factor) return {activity,handoff:toLedgerHandoff(activity)};
+  const factor=await this.factorResolver.resolve(activity); if(!factor) return {activity,handoff:toLedgerHandoff(activity)}; if(!factorIsImportable(factor)) throw new Error("factor is not approved for import or calculation");
   activity={...activity,factorId:factor.id,factorVersion:factor.version,calculationStatus:"ready"};
   const quantity=activity.normalizedQuantity??activity.quantity; if(quantity===undefined)return {activity,handoff:toLedgerHandoff(activity)};
   const calculationActivity={id:activity.activityId,scope:activity.scope,category:activity.scope3Category?String(activity.scope3Category):activity.activityType,quantity,unit:activity.normalizedUnit??activity.unit??factor.activityUnit,method:activity.method,factorId:factor.id,factorValue:factor.value,factorUnit:factor.factorUnit,factorVersion:factor.version};
