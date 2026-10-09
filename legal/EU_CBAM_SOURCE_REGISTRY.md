@@ -57,13 +57,24 @@
 - **Status:** catalogued; needs-legal-review.
 - **Implementation gate:** preserve verifier/accreditation references, evidence references, reporting period and rule version separately from emissions results.
 
-### CBAM-DECLARATIONS-2025-2548 — CBAM declarations
+### CBAM-CERTIFICATE-PRICE-2025-2548 — Price of CBAM certificates
 - **Publisher:** European Commission
-- **Instrument:** Commission Implementing Regulation (EU) 2025/2548 concerning CBAM declarations
+- **Instrument:** Commission Implementing Regulation (EU) 2025/2548 on calculation and publication of the price of CBAM certificates
 - **Official ELI:** https://eur-lex.europa.eu/eli/reg_impl/2025/2548/oj
-- **Scope:** CBAM declaration requirements.
+- **Adopted:** 10 December 2025; published in the Official Journal on 22 December 2025.
+- **Application:** 1 January 2026 (Article 9).
+- **Scope:** Quarterly certificate prices for 2026 and weekly price methodology from 2027.
 - **Status:** catalogued; needs-legal-review.
-- **Implementation gate:** confirm exact official title, operative provisions, annexes, application dates and amendments before extracting rules. Keep filing obligations separate from calculation methodology.
+- **Implementation gate:** treat certificate-price calculation as a separate financial/reporting rule family, not an emissions calculation.
+
+
+### CBAM-AUTHORISED-DECLARANT-2025-486 — Authorised CBAM declarant status
+- **Publisher:** European Commission
+- **Instrument:** Commission Implementing Regulation (EU) 2025/486 on conditions and procedures related to the status of authorised CBAM declarant
+- **Official ELI:** https://eur-lex.europa.eu/eli/reg_impl/2025/486/oj
+- **Adopted:** 17 March 2025; published in the Official Journal on 18 March 2025.
+- **Status:** catalogued; needs-legal-review.
+- **Implementation gate:** model authorisation eligibility, status, validity and evidence independently from emissions calculations; verify current text and application provisions before encoding.
 
 ### CBAM-COMMISSION-GUIDANCE-TRANSITIONAL-EAF — Historical worked example
 - **Publisher:** European Commission, DG TAXUD
