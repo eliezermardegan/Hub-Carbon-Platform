@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "1.0.0",
+  "registryId": "eu-cbam-official-sources",
+  "reviewedAt": "2026-10-09",
+  "status": "metadata-only-not-production-rules",
+  "jurisdiction": "EU",
+  "regulation": "CBAM",
+  "sources": [
+    {
+      "sourceId": "EU-CBAM-BASIC-2023-956",
+      "kind": "regulation",
+      "identifier": "EU 2023/956",
+      "celex": "32023R0956",
+      "eli": "https://eur-lex.europa.eu/eli/reg/2023/956/oj",
+      "publisher": "European Parliament and Council",
+      "status": "basic-act-use-current-consolidated-text",
+      "appliesFrom": "2026-01-01",
+      "supersedes": [],
+      "amendedBy": [
+        "EU-CBAM-AMEND-2025-2083"
+      ],
+      "provisionLocatorRequired": true
+    },
+    {
+      "sourceId": "EU-CBAM-AMEND-2025-2083",
+      "kind": "amending-regulation",
+      "identifier": "EU 2025/2083",
+      "celex": "32025R2083",
+      "eli": "https://eur-lex.europa.eu/eli/reg/2025/2083/oj",
+      "publisher": "European Parliament and Council",
+      "status": "verify-current-consolidated-text",
+      "amends": [
+        "EU-CBAM-BASIC-2023-956"
+      ],
+      "provisionLocatorRequired": true
+    },
+    {
+      "sourceId": "EU-CBAM-CALC-2025-2547",
+      "kind": "implementing-regulation",
+      "identifier": "EU 2025/2547",
+      "celex": "32025R2547",
+      "eli": "https://eur-lex.europa.eu/eli/reg_impl/2025/2547/oj",
+      "publisher": "European Commission",
+      "adoptedAt": "2025-12-10",
+      "publishedAt": "2025-12-22",
+      "appliesFrom": "2026-01-01",
+      "status": "in-force-verify-amendments",
+      "provisionLocatorRequired": true
+    },
+    {
+      "sourceId": "EU-CBAM-DEFAULTS-2025-2621",
+      "kind": "implementing-regulation",
+      "identifier": "EU 2025/2621",
+      "celex": "32025R2621",
+      "eli": "https://eur-lex.europa.eu/eli/reg_impl/2025/2621/oj",
+      "publisher": "European Commission",
+      "adoptedAt": "2025-12-16",
+      "publishedAt": "2025-12-31",
+      "appliesFrom": "2026-01-01",
+      "status": "amended-by-correcting-act",
+      "correctedBy": [
+        "EU-CBAM-DEFAULTS-CORR-2026-1740"
+      ],
+      "provisionLocatorRequired": true
+    },
+    {
+      "sourceId": "EU-CBAM-DEFAULTS-CORR-2026-1740",
+      "kind": "correcting-implementing-regulation",
+      "identifier": "EU 2026/1740",
+      "celex": "32026R1740",
+      "eli": "https://eur-lex.europa.eu/eli/reg_impl/2026/1740/oj",
+      "publisher": "European Commission",
+      "adoptedAt": "2026-07-20",
+      "publishedAt": "2026-07-31",
+      "appliesFrom": "2026-01-01",
+      "status": "in-force",
+      "corrects": [
+        "EU-CBAM-DEFAULTS-2025-2621"
+      ],
+      "provisionLocatorRequired": true
+    },
+    {
+      "sourceId": "EU-CBAM-BENCHMARKS-2025-2620",
+      "kind": "implementing-regulation",
+      "identifier": "EU 2025/2620",
+      "celex": "32025R2620",
+      "eli": "https://eur-lex.europa.eu/eli/reg_impl/2025/2620/oj",
+      "publisher": "European Commission",
+      "status": "verify-current-consolidated-text",
+      "provisionLocatorRequired": true
+    },
+    {
+      "sourceId": "EU-CBAM-AUTH-2025-486",
+      "kind": "implementing-regulation",
+      "identifier": "EU 2025/486",
+      "celex": "32025R0486",
+      "eli": "https://eur-lex.europa.eu/eli/reg_impl/2025/486/oj",
+      "publisher": "European Commission",
+      "adoptedAt": "2025-03-17",
+      "publishedAt": "2025-03-18",
+      "status": "verify-current-consolidated-text",
+      "provisionLocatorRequired": true
+    },
+    {
+      "sourceId": "EU-CBAM-DEFINITIVE-GUIDANCE",
+      "kind": "commission-web-guidance",
+      "publisher": "European Commission DG TAXUD",
+      "url": "https://taxation-customs.ec.europa.eu/carbon-border-adjustment-mechanism/cbam-definitive-regime_en",
+      "retrievedAt": "2026-10-09",
+      "status": "mutable-guidance-not-binding-act",
+      "contentSha256": null
+    },
+    {
+      "sourceId": "EU-CBAM-GUIDANCE-2026-08",
+      "kind": "commission-guidance-announcement",
+      "publisher": "European Commission DG TAXUD",
+      "url": "https://taxation-customs.ec.europa.eu/news/european-commission-publishes-series-guidance-documents-support-cbam-implementation-definitive-2026-08-14_en",
+      "publishedAt": "2026-08-14",
+      "retrievedAt": "2026-10-09",
+      "status": "guidance-not-substitute-for-binding-act",
+      "contentSha256": null
+    }
+  ],
+  "provenancePolicy": {
+    "unknownFields": "Keep null/pending-verification; never infer legal dates or hashes.",
+    "archiveRequiredForExecutableRules": true,
+    "requiredFields": [
+      "retrievedAt",
+      "artifactSha256",
+      "language",
+      "format",
+      "provisionLocator",
+      "legalStatusCheckedAt",
+      "reviewStatus"
+    ],
+    "sourceAndRuleVersionsIndependent": true
+  }
+}
