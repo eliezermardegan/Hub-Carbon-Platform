@@ -132,6 +132,17 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
     const context = await this.trustedContext();
     if (audit.tenantId !== context.tenantId || audit.actorId !== context.actorId) throw new Error("audit record does not match trusted context");
     await this.withTenantRead(context.tenantId, async client => {
+      if (audit.eventId) {
+        const reference = await client.query<{ tenant_id: string; actor_id: string }>(
+          "SELECT tenant_id, actor_id FROM carbon_ledger_events WHERE id = $1",
+          [audit.eventId],
+        );
+        const row = reference.rows[0];
+        if (!row) throw new Error("audit event reference not found");
+        if (row.tenant_id !== context.tenantId || row.actor_id !== context.actorId) {
+          throw new Error("audit event reference does not match trusted context");
+        }
+      }
       await client.query(`INSERT INTO carbon_ledger_audit (id, tenant_id, actor_id, action, event_id, recorded_at, metadata)
         VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)`, [audit.id, context.tenantId, context.actorId, audit.action, audit.eventId ?? null, audit.recordedAt, JSON.stringify(audit.metadata ?? {})]);
     });
