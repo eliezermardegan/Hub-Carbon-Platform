@@ -1,4 +1,4 @@
-import type { LedgerPersistence, PersistedLedgerEvent, AuditRecord } from "./persistence.js";
+import type { LedgerPersistence, PersistedLedgerEvent, AuditRecord, TenantContext } from "./persistence.js";
 
 export interface PgQueryResult<T = unknown> { rows: T[]; rowCount: number | null; }
 export interface PgClient {
@@ -8,34 +8,61 @@ export interface PgPool extends PgClient {
   connect(): Promise<PgClient & { release(): void }>;
 }
 
+export interface TrustedTenantContextProvider {
+  getTrustedTenantContext(): Promise<TenantContext> | TenantContext;
+}
+
 type HeadRow = { head_event_hash: string | null };
 type EventRow = PersistedLedgerEvent;
 
 export class PostgresLedgerPersistence implements LedgerPersistence {
-  constructor(private readonly pool: PgPool) {}
+  constructor(
+    private readonly pool: PgPool,
+    private readonly tenantContextProvider: TrustedTenantContextProvider
+  ) {}
+
+  private async trustedContext(): Promise<TenantContext> {
+    const context = await this.tenantContextProvider.getTrustedTenantContext();
+    if (!context?.tenantId || !context.actorId) throw new Error("trusted tenant context is required");
+    return context;
+  }
+
+  private async beginTenantTransaction(client: PgClient, context: TenantContext): Promise<void> {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('app.tenant_id', $1, true)", [context.tenantId]);
+    const check = await client.query<{ tenant_id: string | null }>(
+      "SELECT current_setting('app.tenant_id', true) AS tenant_id"
+    );
+    if (check.rows[0]?.tenant_id !== context.tenantId) throw new Error("failed to establish transaction-local tenant context");
+  }
 
   async appendEvent(event: PersistedLedgerEvent, audit: AuditRecord): Promise<PersistedLedgerEvent | null> {
+    const context = await this.trustedContext();
+    if (event.tenantId !== context.tenantId || event.actorId !== context.actorId) throw new Error("event tenant or actor does not match trusted context");
+    if (audit.tenantId !== context.tenantId || audit.actorId !== context.actorId || audit.eventId !== event.id) {
+      throw new Error("audit record does not match authorized operation");
+    }
     const client = await this.pool.connect();
     try {
-      await client.query("BEGIN");
+      await this.beginTenantTransaction(client, context);
       const existing = await client.query<PersistedLedgerEvent>(
         `SELECT id, tenant_id as "tenantId", actor_id as "actorId", event_type as "eventType", sequence,
-        recorded_at as "recordedAt", activity, factor, calculation, evidence,
-        methodology_version as "methodologyVersion", reason, replaces_event_id as "replacesEventId",
-        previous_event_hash as "previousEntryHash", event_hash as "eventHash",
-        idempotency_key as "idempotencyKey"
-       FROM carbon_ledger_events WHERE tenant_id = $1 AND idempotency_key = $2`,
-        [event.tenantId, event.idempotencyKey]
+          recorded_at as "recordedAt", activity, factor, calculation, evidence,
+          methodology_version as "methodologyVersion", reason, replaces_event_id as "replacesEventId",
+          previous_event_hash as "previousEntryHash", event_hash as "eventHash",
+          idempotency_key as "idempotencyKey"
+         FROM carbon_ledger_events WHERE tenant_id = $1 AND idempotency_key = $2`,
+        [context.tenantId, event.idempotencyKey]
       );
       if (existing.rows[0]) {
         await client.query("COMMIT");
         return existing.rows[0];
       }
-      await client.query("INSERT INTO carbon_ledger_tenant_heads (tenant_id, head_event_hash) VALUES ($1, NULL) ON CONFLICT (tenant_id) DO NOTHING", [event.tenantId]);
-      await client.query("SELECT tenant_id FROM carbon_ledger_tenant_heads WHERE tenant_id = $1 FOR UPDATE", [event.tenantId]);
+      await client.query("INSERT INTO carbon_ledger_tenant_heads (tenant_id, head_event_hash) VALUES ($1, NULL) ON CONFLICT (tenant_id) DO NOTHING", [context.tenantId]);
+      await client.query("SELECT tenant_id FROM carbon_ledger_tenant_heads WHERE tenant_id = $1 FOR UPDATE", [context.tenantId]);
       const existingAfterLock = await client.query<PersistedLedgerEvent>(
         "SELECT id, tenant_id as \"tenantId\", actor_id as \"actorId\", event_type as \"eventType\", sequence, recorded_at as \"recordedAt\", activity, factor, calculation, evidence, methodology_version as \"methodologyVersion\", reason, replaces_event_id as \"replacesEventId\", previous_event_hash as \"previousEntryHash\", event_hash as \"eventHash\", idempotency_key as \"idempotencyKey\" FROM carbon_ledger_events WHERE tenant_id = $1 AND idempotency_key = $2",
-        [event.tenantId, event.idempotencyKey]
+        [context.tenantId, event.idempotencyKey]
       );
       if (existingAfterLock.rows[0]) {
         await client.query("COMMIT");
@@ -43,18 +70,16 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
       }
       const head = await client.query<HeadRow>(
         "SELECT head_event_hash FROM carbon_ledger_tenant_heads WHERE tenant_id = $1",
-        [event.tenantId]
+        [context.tenantId]
       );
       const currentHead = head.rows[0]?.head_event_hash ?? null;
-      if (currentHead !== event.previousEntryHash) {
-        throw new Error("ledger head conflict: stale previousEntryHash");
-      }
+      if (currentHead !== event.previousEntryHash) throw new Error("ledger head conflict: stale previousEntryHash");
 
       const expected = await client.query<{ expected_sequence: string }>(
         "SELECT COALESCE(MAX(sequence), 0) + 1 AS expected_sequence FROM carbon_ledger_events WHERE tenant_id = $1",
-        [event.tenantId]
+        [context.tenantId]
       );
-      if (Number(expected.rows[0]?.expected_sequence) !== event.sequence) {
+      if (BigInt(String(expected.rows[0]?.expected_sequence)) !== BigInt(event.sequence)) {
         throw new Error("ledger sequence conflict: expected " + expected.rows[0]?.expected_sequence);
       }
 
@@ -64,34 +89,44 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
            calculation, evidence, methodology_version, reason, replaces_event_id,
            previous_event_hash, event_hash, idempotency_key)
          VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb,$11,$12,$13,$14,$15,$16)`,
-        [
-          event.id, event.tenantId, event.actorId, event.eventType, event.sequence,
+        [event.id, context.tenantId, context.actorId, event.eventType, event.sequence,
           event.recordedAt, JSON.stringify(event.activity ?? null), JSON.stringify(event.factor ?? null),
-          JSON.stringify(event.calculation ?? null), JSON.stringify(event.evidence),
-          event.methodologyVersion, event.reason ?? null, event.replacesEventId ?? null,
-          event.previousEntryHash, event.eventHash, event.idempotencyKey
-        ]
+          JSON.stringify(event.calculation ?? null), JSON.stringify(event.evidence), event.methodologyVersion,
+          event.reason ?? null, event.replacesEventId ?? null, event.previousEntryHash, event.eventHash, event.idempotencyKey]
       );
-
       await client.query(
         `INSERT INTO carbon_ledger_tenant_heads (tenant_id, head_event_hash, updated_at)
-         VALUES ($1,$2,now())
-         ON CONFLICT (tenant_id) DO UPDATE
+         VALUES ($1,$2,now()) ON CONFLICT (tenant_id) DO UPDATE
          SET head_event_hash = EXCLUDED.head_event_hash, updated_at = now()`,
-        [event.tenantId, event.eventHash]
+        [context.tenantId, event.eventHash]
       );
-
       await client.query(
         `INSERT INTO carbon_ledger_audit
          (id, tenant_id, actor_id, action, event_id, recorded_at, metadata)
          VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)`,
-        [audit.id, audit.tenantId, audit.actorId, audit.action, audit.eventId ?? null,
-         audit.recordedAt, JSON.stringify(audit.metadata ?? {})]
+        [audit.id, context.tenantId, context.actorId, audit.action, event.id, audit.recordedAt, JSON.stringify(audit.metadata ?? {})]
       );
       await client.query("COMMIT");
       return null;
     } catch (error) {
-      await client.query("ROLLBACK");
+      try { await client.query("ROLLBACK"); } catch { /* preserve original error */ }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async withTenantRead<T>(tenantId: string, work: (client: PgClient) => Promise<T>): Promise<T> {
+    const context = await this.trustedContext();
+    if (tenantId !== context.tenantId) throw new Error("tenant query does not match trusted context");
+    const client = await this.pool.connect();
+    try {
+      await this.beginTenantTransaction(client, context);
+      const result = await work(client);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      try { await client.query("ROLLBACK"); } catch { /* preserve original error */ }
       throw error;
     } finally {
       client.release();
@@ -99,41 +134,44 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
   }
 
   async listEvents(tenantId: string): Promise<PersistedLedgerEvent[]> {
-    const result = await this.pool.query<EventRow>(
-      `SELECT id, tenant_id as "tenantId", actor_id as "actorId", event_type as "eventType",
-        sequence, recorded_at as "recordedAt", activity, factor, calculation, evidence,
-        methodology_version as "methodologyVersion", reason, replaces_event_id as "replacesEventId",
-        previous_event_hash as "previousEntryHash", event_hash as "eventHash",
-        idempotency_key as "idempotencyKey"
-       FROM carbon_ledger_events WHERE tenant_id = $1 ORDER BY sequence ASC`,
-      [tenantId]
-    );
-    return result.rows;
+    return this.withTenantRead(tenantId, async client => {
+      const result = await client.query<EventRow>(
+        `SELECT id, tenant_id as "tenantId", actor_id as "actorId", event_type as "eventType", sequence,
+          recorded_at as "recordedAt", activity, factor, calculation, evidence,
+          methodology_version as "methodologyVersion", reason, replaces_event_id as "replacesEventId",
+          previous_event_hash as "previousEntryHash", event_hash as "eventHash", idempotency_key as "idempotencyKey"
+         FROM carbon_ledger_events ORDER BY sequence ASC`
+      );
+      return result.rows;
+    });
   }
 
   async listAudit(tenantId: string): Promise<AuditRecord[]> {
-    const result = await this.pool.query<AuditRecord>(
-      "SELECT id, tenant_id as \"tenantId\", actor_id as \"actorId\", action, event_id as \"eventId\", recorded_at as \"recordedAt\", metadata FROM carbon_ledger_audit WHERE tenant_id = $1 ORDER BY recorded_at ASC",
-      [tenantId]
-    );
-    return result.rows;
+    return this.withTenantRead(tenantId, async client => {
+      const result = await client.query<AuditRecord>(
+        "SELECT id, tenant_id as \"tenantId\", actor_id as \"actorId\", action, event_id as \"eventId\", recorded_at as \"recordedAt\", metadata FROM carbon_ledger_audit ORDER BY recorded_at ASC"
+      );
+      return result.rows;
+    });
   }
 
   async recordAudit(audit: AuditRecord): Promise<void> {
-    await this.pool.query(
-      `INSERT INTO carbon_ledger_audit
-       (id, tenant_id, actor_id, action, event_id, recorded_at, metadata)
-       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)`,
-      [audit.id, audit.tenantId, audit.actorId, audit.action, audit.eventId ?? null,
-       audit.recordedAt, JSON.stringify(audit.metadata ?? {})]
-    );
+    const context = await this.trustedContext();
+    if (audit.tenantId !== context.tenantId || audit.actorId !== context.actorId) throw new Error("audit record does not match trusted context");
+    await this.withTenantRead(context.tenantId, async client => {
+      await client.query(
+        `INSERT INTO carbon_ledger_audit
+         (id, tenant_id, actor_id, action, event_id, recorded_at, metadata)
+         VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)`,
+        [audit.id, context.tenantId, context.actorId, audit.action, audit.eventId ?? null, audit.recordedAt, JSON.stringify(audit.metadata ?? {})]
+      );
+    });
   }
 
   async getHead(tenantId: string): Promise<string | null> {
-    const result = await this.pool.query<HeadRow>(
-      "SELECT head_event_hash FROM carbon_ledger_tenant_heads WHERE tenant_id = $1",
-      [tenantId]
-    );
-    return result.rows[0]?.head_event_hash ?? null;
+    return this.withTenantRead(tenantId, async client => {
+      const result = await client.query<HeadRow>("SELECT head_event_hash FROM carbon_ledger_tenant_heads", []);
+      return result.rows[0]?.head_event_hash ?? null;
+    });
   }
 }
