@@ -19,7 +19,7 @@ export const ademeV23_6UtilityUnder3_5tFactor: EmissionFactor = {
     sourceVersion: "23.6",
     sourcePublicationDate: "2025-04-24",
     sourceDocument: "Claimed source: Base_Carbone_V23.6.csv, record 28276; exact artifact not yet obtained and verified",
-    license: "Licence Ouverte / Open Licence 2.0 (exact artifact applicability pending verification)",
+    license: "Licence Ouverte / Open Licence 2.0",
     legalBasis: "Blocked pending verification of the exact dataset artifact, license applicability, and source record",
     licenseUrl: "https://www.etalab.gouv.fr/wp-content/uploads/2017/04/ETALAB-Licence-Ouverte-v2.0.pdf",
     attributionRequired: true,
