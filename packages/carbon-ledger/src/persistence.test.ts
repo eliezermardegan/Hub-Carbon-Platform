@@ -46,10 +46,10 @@ function persistenceWithEventReference(reference: { tenant_id: string; actor_id:
     async query<T = unknown>(sql: string): Promise<PgQueryResult<T>> {
       statements.push(sql);
       if (sql === "SELECT current_setting('app.tenant_id', true) AS tenant_id") {
-        return { rows: [{ tenant_id: tenantId } as T], rowCount: 1 };
+        return { rows: [{ tenant_id: tenantId } as unknown as T], rowCount: 1 };
       }
       if (sql.includes("SELECT tenant_id, actor_id FROM carbon_ledger_events")) {
-        return { rows: (reference ? [reference as T] : []), rowCount: reference ? 1 : 0 };
+        return { rows: (reference ? [reference as unknown as T] : []), rowCount: reference ? 1 : 0 };
       }
       return { rows: [], rowCount: 1 };
     },
