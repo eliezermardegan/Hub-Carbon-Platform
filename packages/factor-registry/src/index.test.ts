@@ -59,3 +59,15 @@ test("blocks factors whose source does not permit redistribution", () => {
     provenance: { ...factor.provenance, redistributionAllowed: false }
   }), false);
 });
+
+test("excludes blocked factors from normal lookups unless explicitly requested for review", () => {
+  const blocked = {
+    ...factor,
+    id: "blocked.factor",
+    status: "blocked" as const,
+    provenance: { ...factor.provenance, redistributionAllowed: false, sourceContentSha256: "" }
+  };
+  assert.equal(findFactors([blocked], { scope: 1 }).length, 0);
+  assert.equal(findFactors([blocked], { scope: 1, status: "blocked" }).length, 1);
+  assert.equal(factorIsImportable(blocked), false);
+});
