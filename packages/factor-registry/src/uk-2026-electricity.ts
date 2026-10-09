@@ -23,7 +23,7 @@ export const ukGovernment2026ElectricityFactor: EmissionFactor = {
     sourceVersion: "2026 (July 2026 updated flat file or full set to be verified)",
     sourcePublicationDate: "2026-06-11",
     sourceDocument: "Claimed source: methodology Table 9; exact factor worksheet/row and updated artifact not yet verified",
-    license: "Open Government Licence v3.0 (exact artifact applicability pending verification)",
+    license: "Open Government Licence v3.0",
     legalBasis: "Blocked pending verification of exact source artifact, applicable licence, factor row, and value",
     licenseUrl: "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
     attributionRequired: true,
