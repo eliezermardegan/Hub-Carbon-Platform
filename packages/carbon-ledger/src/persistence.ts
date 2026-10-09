@@ -56,7 +56,7 @@ create table if not exists carbon_ledger_events (
   tenant_id uuid not null,
   actor_id uuid not null,
   event_type text not null check (event_type in ('entry','restatement','reversal')),
-  sequence bigint not null,
+  sequence bigint not null check (sequence > 0),
   recorded_at timestamptz not null,
   activity jsonb,
   factor jsonb,
@@ -72,6 +72,7 @@ create table if not exists carbon_ledger_events (
 );
 
 alter table carbon_ledger_events add column if not exists idempotency_key text;
+alter table carbon_ledger_events add column if not exists idempotency_payload_hash text;
 create unique index if not exists carbon_ledger_events_tenant_idempotency
   on carbon_ledger_events (tenant_id, idempotency_key)
   where idempotency_key is not null;
@@ -83,7 +84,7 @@ create table if not exists carbon_ledger_audit (
   id uuid primary key,
   tenant_id uuid not null,
   actor_id uuid not null,
-  action text not null,
+  action text not null check (action in ('append','restatement','reversal','verification')),
   event_id uuid,
   recorded_at timestamptz not null,
   metadata jsonb
@@ -129,24 +130,19 @@ drop policy if exists carbon_ledger_heads_tenant_isolation on carbon_ledger_tena
 
 create policy carbon_ledger_events_tenant_isolation
 on carbon_ledger_events
-using (tenant_id = current_setting('app.tenant_id', true)::uuid);
-
-create policy carbon_ledger_events_tenant_insert
-on carbon_ledger_events
-for insert
-with check (tenant_id = current_setting('app.tenant_id', true)::uuid);
+using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
 
 create policy carbon_ledger_audit_tenant_isolation
 on carbon_ledger_audit
-using (tenant_id = current_setting('app.tenant_id', true)::uuid);
-
-create policy carbon_ledger_audit_tenant_insert
-on carbon_ledger_audit
-for insert
-with check (tenant_id = current_setting('app.tenant_id', true)::uuid);
+using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
 
 create policy carbon_ledger_heads_tenant_isolation
 on carbon_ledger_tenant_heads
-using (tenant_id = current_setting('app.tenant_id', true)::uuid)
-with check (tenant_id = current_setting('app.tenant_id', true)::uuid);
+using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+
+-- Operational requirement: the application role must not own these tables and must not have BYPASSRLS.
+-- Ownership/role grants are deployment-specific and must be verified in the target environment.
 `;
