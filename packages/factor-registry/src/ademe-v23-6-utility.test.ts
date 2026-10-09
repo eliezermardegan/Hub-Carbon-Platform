@@ -14,7 +14,8 @@ test("resolves the ADEME utility factor metadata for review without approving it
   const matches = findFactors([ademeV23_6UtilityUnder3_5tFactor], {
     scope: 3,
     geography: "FR",
-    activityUnit: "km"
+    activityUnit: "km",
+    status: "blocked"
   });
   assert.equal(matches.length, 1);
   assert.equal(matches[0].status, "blocked");
