@@ -140,6 +140,7 @@ test("EU CBAM EAF end-to-end cycle preserves direct + indirect units and totals"
       version: "v1",
       effectiveFrom: "2026-01-01",
       description: "Synthetic test-only applicability rule; not a legal implementation.",
+      matches: (context) => context.activityType === "imported_cbam_good" && context.productCode === "IRON_OR_STEEL_TEST_FIXTURE",
       evaluate: () => ({
         applicability: "applicable",
         regulation: "EU-CBAM",
