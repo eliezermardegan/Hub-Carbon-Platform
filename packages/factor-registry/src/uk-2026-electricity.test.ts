@@ -11,7 +11,7 @@ test("keeps UK Government 2026 electricity factor blocked until source verificat
 });
 
 test("resolves UK electricity metadata for 2026 review but does not approve use", () => {
-  const matches = findFactors([ukGovernment2026ElectricityFactor], { scope: 2, geography: "GB", activityUnit: "kWh", asOf: "2026-06-01" });
+  const matches = findFactors([ukGovernment2026ElectricityFactor], { scope: 2, geography: "GB", activityUnit: "kWh", asOf: "2026-06-01", status: "blocked" });
   assert.equal(matches.length, 1);
   assert.equal(matches[0].status, "blocked");
   assert.equal(matches[0].value, 0.13096);
