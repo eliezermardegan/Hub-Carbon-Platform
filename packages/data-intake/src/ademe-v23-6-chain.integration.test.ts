@@ -35,7 +35,7 @@ class MemoryLedgerPersistence implements LedgerPersistence {
   }
 }
 
-test("runs ADEME factor through Data Intake, Carbon Core and Carbon Ledger", async () => {
+test("rejects blocked ADEME factor before calculation or ledger append", async () => {
   const persistence = new InMemoryDataIntakePersistence();
   const ledgerPersistence = new MemoryLedgerPersistence();
   const ledger = new CarbonLedgerDomain(ledgerPersistence, new InMemoryIdempotencyStore());
@@ -45,7 +45,7 @@ test("runs ADEME factor through Data Intake, Carbon Core and Carbon Ledger", asy
     ledger
   );
 
-  const result = await service.ingestActivity({
+  await assert.rejects(() => service.ingestActivity({
     companyId: "tenant-ademe",
     reportingPeriodId: "period-2026",
     scope: 3,
@@ -66,21 +66,7 @@ test("runs ADEME factor through Data Intake, Carbon Core and Carbon Ledger", asy
     actorId: "test-suite",
     methodologyVersion: "ademe-base-carbone-v23.6",
     now: "2026-10-08T00:00:00Z"
-  });
-
-  assert.equal(result.activity.calculationStatus, "calculated");
-  assert.equal(result.calculation?.emissionsKgCo2e, 235);
-  assert.equal(result.calculation?.factorId, ademeV23_6UtilityUnder3_5tFactor.id);
-  assert.equal(result.calculation?.factorVersion, "23.6");
-
-  const events = await ledgerPersistence.listEvents("tenant-ademe");
-  assert.equal(events.length, 1);
-  assert.equal(events[0].previousEntryHash, null);
-  assert.equal(events[0].factor?.id, ademeV23_6UtilityUnder3_5tFactor.id);
-  assert.equal(events[0].factor?.version, "23.6");
-  assert.equal(events[0].factor?.value, 0.235);
-  assert.equal(events[0].factor?.provenance?.license, "Licence Ouverte / Open Licence 2.0");
-
-  const verification = await ledger.verify("tenant-ademe", "test-suite");
-  assert.deepEqual(verification, { valid: true, checkedEvents: 1 });
+  }), /factor is not approved for import or calculation/);
+  assert.equal(ledgerPersistence.events.length, 0);
+  assert.equal(ledgerPersistence.audits.length, 0);
 });
