@@ -472,7 +472,66 @@ The existing CCCA alignment above captures the report's main strategic recommend
 - Treat “single source of truth” as a governed logical record and lineage model, not necessarily a mandate to copy all sensitive source data into one physical database.
 - Reuse existing CCCA/NOV tasks where possible. These additions should clarify acceptance criteria, not create duplicate implementations.
 
-## 20. Change log
+
+
+## 20. GHG reporting handbook and institutional methodology — fit-gap assessment
+
+**Sources reviewed (2026-10-10):**
+- *GHG Emissions Reporting*, KPMG LLP, © 2024, user-provided PDF. This is a professional reporting handbook interpreting multiple frameworks; it is not itself a regulator or a substitute for the current primary standards and applicable law.
+- *Carbon Accounting Methodology*, King's College London, last updated July 2025, user-provided PDF. This is a useful institutional example of a transparent category-by-category methodology, not a universal method that should be copied without assessing applicability.
+
+**Review scope:** document/repository-level fit-gap against the project tracker and the repository README/architecture files already inspected. This is not a complete code audit, legal opinion, assurance engagement, or test run. Existing design documentation is not treated as proof of an implemented capability.
+
+### 20.1 Existing coverage and gaps
+
+| Topic in the attachments | Existing project coverage | Assessment |
+|---|---|---|
+| General GHG accounting principles: relevance, completeness, consistency, transparency and accuracy | CCCA-01/02/06/08 and NOV-03/09 cover schema, verification, quality, boundaries and reporting evidence. | PARTIAL. Translate the five principles into inventory-level acceptance criteria and report warnings/exclusions. |
+| Organisation and operational boundaries; classify emission sources before calculation | CCCA-08 and NOV-01 cover boundaries and organisation/site hierarchy. | CONTEMPLATED, not verified. Need an explicit, versioned consolidation approach (e.g. equity share, financial control or operational control) selected per reporting framework/customer policy. |
+| Category-by-category method documentation | Data-intake and factor-registry READMEs describe broad ingestion/provenance; KCL shows a useful pattern of category, description, data source/unit, factor basis, method maturity and caveats. | PARTIAL. Need a governed methodology catalogue for each scope/category with applicability, owner, activity input, unit, factor basis, estimation method, period, evidence, limitations and review date. Do not adopt a sector-specific SCEF level uncritically. |
+| Inventory of unavailable, partial, under-review and out-of-scope categories | CCCA-04/06 and NOV-12 cover factor gaps and category coverage. | PARTIAL. Require explicit per-entity reporting of included, excluded, not applicable, unavailable and partially available categories, with rationale, owner and remediation plan. Never silently treat missing data as zero. |
+| Formula, gases and global warming potential (GWP) | Carbon-core documents deterministic activity × factor calculations; factor provenance includes methodology/GWP. | PARTIAL. Confirm calculation dimensions, gas-specific factors and GWP version; retain gas-level amounts where available and CO2e outputs with explicit GWP basis. Add dimensional and regression tests. |
+| Scope 2 location-based and market-based results and contractual energy instruments | NOV-04 already requests separate results and evidence. | PLANNED. Make the reporting model distinguish the two methods and attach geography, grid/residual mix where relevant, supplier factor, instrument type, market, vintage, ownership/cancellation evidence and eligibility checks as applicable. Contractual instruments are not the same as offset credits. |
+| Base year, significance threshold, structural change and retrospective recalculation | NOV-05 covers baselines and recalculation at a high level. | PARTIAL. Add an explicit recalculation policy: qualitative/quantitative significance thresholds (including cumulative effects), triggering events, approvals, affected years, before/after values and reasons. Preserve previously issued report snapshots and link restatements rather than silently overwriting history. Threshold values are policy/framework-specific, not universal constants. |
+| Time-series comparability and factor vintage | P1-A, CCCA-04, NOV-05 and NOV-08 cover versioned factors and historical reproducibility. | PARTIAL. Record reporting period, factor publication/vintage, factor effective period and chosen period-alignment policy. For spend-based estimates, disclose currency, price year and whether inflation/sector-price adjustments are applied; do not compare nominal spend across years as if it were real activity without caveat. |
+| Data quality, estimation uncertainty and maturity improvement | CCCA-06/16 and NOV-03 cover quality dimensions and review. | PARTIAL. Add method-specific uncertainty/quality metadata and disclosure of the main uncertainty sources, assumptions and improvement actions. A score must explain its basis and must not imply assurance without validation. |
+| Gross inventory versus removals, avoided emissions, project reductions and offset credits | Existing NOV safeguards say actuals, estimates, forecasts, targets and offsets must remain distinct. | PARTIAL. Explicitly keep gross Scope 1/2/3 totals separate from removals, avoided emissions, project accounting and purchased/retired offset credits. If offset management is in scope, track programme, unique serial/registry ID, vintage, ownership, retirement/cancellation, verification status and reversal/claim risks. Never subtract credits invisibly from gross inventory. |
+| Report/disclosure package and assurance statement | CCCA-01/02/18 and NOV-09 cover portable formats, verification and report snapshots. | PARTIAL. Define report profiles that can include totals by scope, Scope 2 methods, Scope 3 categories, gases and CO2e, exclusions, methods, boundaries, base year/recalculations, data quality, uncertainty, assumptions, intensity metrics, targets and assurance type/opinion where applicable. Profiles must be selected for a specific framework and jurisdiction, not presented as universal legal requirements. |
+| Scope 3 prioritisation and iterative transition from spend/average data to primary data | CCCA-04/07 and NOV-07/12 cover gaps, methods and supplier data. | CONTEMPLATED, needs operational workflow. Support screening/hotspot analysis, a documented method hierarchy, primary-data collection plans, data-quality improvement over time and visible flags when secondary estimates are used. |
+
+### 20.2 New handbook/methodology addenda
+
+| ID | Priority | Work item | Acceptance criteria | Initial status |
+|---|---|---|---|---|
+| GHGR-01 | P1 | Versioned inventory methodology catalogue | Every applicable category has a reviewed record of boundary, activity data, unit, method, factor basis, source, period, owner, limitations and evidence; unsupported categories are explicit. | NOT STARTED |
+| GHGR-02 | P1 | Exclusion and coverage register | Report distinguishes included, excluded, not applicable, unavailable and partial categories; each exclusion has a reason, materiality consideration, owner and remediation decision. | NOT STARTED |
+| GHGR-03 | P1 | GHG species, CO2e and GWP basis | Gas-level calculation support where inputs permit; explicit GWP source/version and dimensional tests; historical results remain reproducible. | NOT STARTED |
+| GHGR-04 | P1 | Base-year recalculation and restatement policy | Approved policy defines triggers, significance assessment, cumulative changes, approvals and affected periods; restatements are auditable and old report snapshots remain retrievable. | NOT STARTED |
+| GHGR-05 | P1 | Reporting-period/factor-vintage and spend-price alignment | Store reporting period, factor vintage/effective period, currency and price year for spend estimates; policy and tests document inflation/price adjustment or its absence. | NOT STARTED |
+| GHGR-06 | P1 | Uncertainty and estimation-quality disclosures | Method-specific assumptions/uncertainty, quality dimensions and improvement actions appear in report evidence; scores do not masquerade as independent assurance. | NOT STARTED |
+| GHGR-07 | P1 / scope decision | Offset/removal/project-accounting register | Decide product scope. If included, model separately from gross inventory and track unique IDs, programme/registry, vintage, transfer/retirement, verification and reversal/claim status. | NOT STARTED |
+| GHGR-08 | P1 | Framework-specific report profiles | Versioned disclosure profiles map each selected framework to required fields and validation; sample exports reconcile to ledger and identify exclusions, estimates and restatements. | NOT STARTED |
+| GHGR-09 | P1 | Inventory principles and boundary consolidation policy | Document relevance, completeness, consistency, transparency and accuracy checks; define selected consolidation approach and boundary change history per customer/framework. | NOT STARTED |
+| GHGR-10 | P1 | Scope 2 contractual-instrument evidence | Evidence and eligibility validation for market-based results; distinguish energy attribute instruments from offset credits; test invalid, duplicate or out-of-period claims. | NOT STARTED |
+
+### 20.3 Crosswalk to existing work
+
+- GHGR-01/02 extend CCCA-04, CCCA-06 and NOV-12.
+- GHGR-03 extends P1-A factor provenance and the deterministic calculation-core acceptance criteria.
+- GHGR-04/05 extend NOV-05 and NOV-08; they must preserve historical snapshots and factor versions.
+- GHGR-06 extends CCCA-16 and NOV-03.
+- GHGR-07 is an explicit product-scope decision and must not be treated as a requirement to trade or promote offsets.
+- GHGR-08 extends CCCA-01/02/18 and NOV-09.
+- GHGR-09 extends CCCA-08 and NOV-01.
+- GHGR-10 extends NOV-04 and CCCA-07/08.
+
+### 20.4 Source and evidence limitations
+
+- KPMG's handbook compares different frameworks (including GHGP, ISSB/IFRS S2, ESRS and the SEC climate rule). Their requirements and applicability differ and may change. Before encoding any rule, validate it against the current primary source, effective date, jurisdiction, entity scope and applicable transition relief.
+- King's methodology reflects the institution's own organisational boundaries, reporting calendar, available data and sector context. Use it as a template for documenting decisions and limitations, not as a universal factor policy or mandatory category set.
+- No claim is made here that the listed capabilities are implemented, that the platform conforms to any framework, or that any emissions inventory has been independently assured.
+
+## 21. Change log
 
 | Date (UTC) | Change | Evidence / commit | Updated by |
 |---|---|---|---|
@@ -480,9 +539,10 @@ The existing CCCA alignment above captures the report's main strategic recommend
 | 2026-10-10 | Added traceability matrix against the user-provided Digital Catapult CCCA report and 12 explicit addenda covering open formats/APIs, verification, selective sharing, factor gaps, integrations, quality/lineage, calculation methods, boundaries/double counting, product carbon exchange/e-liability, XBRL, security/privacy and trust framework. Statuses distinguish existing design coverage from verified implementation. | CCCA report summary pp. 4–6 and detailed sections pp. 56–85; section 14 of this tracker | Project implementation session — independent review not yet performed |
 | 2026-10-10 | Added a repository/documentation fit-gap assessment of Novisto's enterprise carbon accounting guide, 12 proposed capability items, safeguards, crosswalk to CCCA tasks and source/evidence limitations. Updated recorded branch head. | https://novisto.com/resources/carbon-accounting-guide; repository files listed in section 18; commit to be recorded after this change | Project implementation session — independent review not yet performed |
 | 2026-10-10 | Expanded the detailed CCCA report fit-gap with six operational addenda covering data ownership, collection cadence, cleaning/quarantine, quality dimensions, transformation controls and auditable trend/report review. | CCCA report printed pp. 47–69 and 88–91; section 19 of this tracker | Project implementation session — independent review not yet performed |
+| 2026-10-10 | Added fit-gap analysis of the user-provided KPMG GHG reporting handbook and King's College London carbon-accounting methodology; created ten GHGR addenda for category methodology, exclusions, GWP, restatements, factor-vintage alignment, uncertainty, offsets, report profiles, inventory principles and Scope 2 evidence. | User-provided handbook-ghg-emissions-reporting.pdf and carbon-accounting-methodology.pdf; section 20 of this tracker | Project implementation session — independent review not yet performed |
 | YYYY-MM-DD | Describe the code/documentation change, status transition, test evidence and blocker/closure. | Commit SHA / CI run / evidence link | Name |
 
-## 21. How this document must be maintained
+## 22. How this document must be maintained
 
 - Update the relevant task row and findings register in the same change set as substantive implementation work, or in the immediately following documentation commit.
 - Every status transition must include a date and evidence link in the change log.
@@ -493,6 +553,6 @@ The existing CCCA alignment above captures the report's main strategic recommend
 - Once the final declaration is submitted, preserve it in the PR discussion and link it here. The project approver then decides whether the work may enter independent validation.
 - No task in this tracker grants permission to merge, deploy, or alter production.
 
-## 22. Final acceptance principle
+## 23. Final acceptance principle
 
 The programme is ready to be handed over for independent validation only when the evidence is complete and all exceptions are explicit. It is not automatically production-ready because code was committed, documentation was written, a subset of tests passed, or a CI workflow was green. P0 remains incomplete until the real PostgreSQL integration criteria are demonstrated. Any unresolved security, privacy, licensing, factor provenance, integration, regulatory, backup or operational risk must remain visible to the reviewer and approver.
