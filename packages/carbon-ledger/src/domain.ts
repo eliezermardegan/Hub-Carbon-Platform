@@ -276,6 +276,12 @@ export class CarbonLedgerDomain {
     return { valid: false, checkedEvents, error };
   }
 
+  async findByIdempotencyKey(tenantId: string, key: string): Promise<DomainEvent | null> {
+    if (!tenantId || !key) throw new Error("tenantId and idempotency key are required");
+    const events = await this.persistence.listEvents(tenantId);
+    return (events.find(event => event.idempotencyKey === key) as DomainEvent | undefined) ?? null;
+  }
+
   private async findEvent(tenantId: string, id: string): Promise<DomainEvent | null> {
     const events = await this.persistence.listEvents(tenantId);
     return (events.find(e => e.id === id) as DomainEvent | undefined) ?? null;
