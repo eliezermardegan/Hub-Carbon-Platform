@@ -16,8 +16,14 @@ const activity = (overrides: Partial<ActivityRecord> = {}): ActivityRecord => ({
 const factor: any = {
   id: "f1", version: "1", status: "verified", name: "test", scope: 2, category: "electricity",
   activityUnit: "kWh", factorUnit: "kgCO2e/kWh", value: .4, dataQuality: "high",
-  provenance: { sourceName: "test", sourceUrl: "https://example.invalid", license: "test",
-    attributionRequired: false, redistributionAllowed: true, retrievedAt: "2026-01-01" }
+  provenance: {
+    sourceName: "Synthetic test fixture", sourceUrl: "https://example.invalid/factor", sourceVersion: "fixture-v1",
+    license: "test-only", legalBasis: "Synthetic test fixture; not production evidence",
+    attributionRequired: false, redistributionAllowed: true,
+    sourceContentSha256: "a".repeat(64), retrievedAt: "2026-01-01T00:00:00Z",
+    geography: "TEST", originalUnit: "kWh", normalizedUnit: "kWh",
+    transformation: "Synthetic fixture; no transformation", evidenceRef: "test://factor/f1"
+  }
 };
 
 function makePersistence(onSave?: (value: ActivityRecord) => void) {
