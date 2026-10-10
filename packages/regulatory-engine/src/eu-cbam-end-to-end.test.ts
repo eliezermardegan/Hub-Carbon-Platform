@@ -6,7 +6,7 @@ import type { EmissionFactor } from "../../factor-registry/src/index.js";
 import * as dataIntakeServiceModule from "../../data-intake/src/service.ts";
 
 const DataIntakeService = ((dataIntakeServiceModule as any).DataIntakeService ?? (dataIntakeServiceModule as any).default?.DataIntakeService ?? (dataIntakeServiceModule as any).default) as any;
-import { InMemoryDataIntakePersistence } from "../../data-intake/src/persistence.js";
+import { InMemoryDataIntakePersistence } from "../../data-intake/src/persistence.ts";
 import type { ActivityRecord, Evidence, SourceDocument } from "../../data-intake/src/index.js";
 import { buildCarbonReport, buildCbamReport } from "../../reporting-engine/src/index.js";
 import { createRegulatoryEngine } from "./domain.js";
