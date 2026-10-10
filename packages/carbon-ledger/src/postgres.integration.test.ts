@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { POSTGRES_SCHEMA } from "./persistence.js";
 import { Pool } from "pg";
-import { PostgresLedgerPersistence } from "./postgres.js";
+import { PostgresLedgerPersistence, type PgPool } from "./postgres.js";
 
 const databaseUrl = process.env.PG_INTEGRATION_URL;
 const enabled = Boolean(databaseUrl);
@@ -84,7 +84,7 @@ test("PostgreSQL bigint preserves values above JavaScript safe integer range", {
 test("PostgresLedgerPersistence executes tenant-scoped reads through the pg driver", { skip: !enabled }, async () => {
   const pool = new Pool({ connectionString: databaseUrl, max: 2 });
   try {
-    const persistence = new PostgresLedgerPersistence(pool, {
+    const persistence = new PostgresLedgerPersistence(pool as unknown as PgPool, {
       getTrustedTenantContext: () => ({ tenantId: tenantA, actorId: actor }),
     });
     assert.deepEqual(await persistence.listEvents(tenantA), []);
