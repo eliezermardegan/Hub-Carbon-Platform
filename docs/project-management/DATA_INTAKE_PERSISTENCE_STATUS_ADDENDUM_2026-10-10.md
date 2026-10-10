@@ -1,72 +1,64 @@
 # Data Intake Persistence Status Addendum — 2026-10-10
 
-**Authoritative current candidate:** `52c9cb71f1b84a87b6e4fa23657dcc57ba5be4bd`  
-**Test CI:** [#240 / run 38063916945](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38063916945) — **FAILED**  
-**Supply Chain Security:** [run 38063916913](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38063916913) — PASS  
-**Factor Provenance Gate:** [run 38063916906](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38063916906) — PASS  
+**Latest validated implementation SHA:** 4d5659f36b9d6702cd2381484fef474bf8635438
+**Test CI:** [#248 / run 38067395157](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395157) — **PASS: 100/100, 0 failures, 0 skipped**  
+**Supply Chain Security:** [#168 / run 38067395164](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395164) — PASS  
+**Factor Provenance Gate:** [#163 / run 38067395111](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395111) — PASS  
 **PR:** #21 — OPEN / DRAFT / UNMERGED  
-**Issue:** #27 — OPEN
+**Issue #27:** OPEN pending independent review/readiness decision  
+**Issue #28:** OPEN for true process/worker-boundary recovery
 
 ## 1. Current decision
 
-The durable PostgreSQL Data Intake implementation is **IMPLEMENTED — UNVERIFIED / REWORK REQUIRED**. It must not be treated as production-ready, legally compliant, residency-certified, or independently security-reviewed.
+The durable PostgreSQL Data Intake implementation is **TESTED — EVIDENCE RECORDED** on the exact SHA above for the current integration suite. It is not a production-ready or legally compliant status. One technical criterion remains: a fresh OS process or independent worker boundary.
 
-## 2. What is implemented
+## 2. Verified implementation and test result
 
 - PostgreSQL-backed Data Intake persistence with JSONB records.
 - Tenant + idempotency-key uniqueness and canonical request fingerprinting.
-- Transaction-local tenant context and RLS/FORCE RLS policies.
-- Lease expiry and claim/fencing tokens.
-- Recovery lookup for a ledger event already committed before a final intake-save failure.
-- Validation of tenant, actor, methodology, factor snapshot, activity dimensions and evidence before recovered calculation state is accepted.
-- Domain functions separated into `packages/data-intake/src/model.ts` to reduce the service/index dependency cycle.
-- Strict `typecheck:tests` covering test files.
-- Full test command retains `*.integration.test.ts`.
-- Factor gating keeps unresolved data `not_ready` and rejected factors `blocked`; these paths do not append to the ledger.
+- Transaction-local tenant context, RLS/FORCE RLS, lease expiry and claim/fencing tokens.
+- Recovery lookup for an event committed before an intake final-save failure; validation of tenant, actor, methodology, factor snapshot, dimensions and evidence before accepting recovered calculated state.
+- The integration test uses canonical DATA_INTAKE_POSTGRES_SCHEMA rather than duplicated Data Intake DDL.
+- SQL statement boundaries are corrected without weakening ON_ERROR_STOP=1, RLS policies or grant assertions.
+- CBAM test uses guarded ESM namespace/default-export resolution under Node 22/tsx; it fails clearly if the expected constructor is missing.
+- Full test command includes integration tests; normal and test-inclusive typechecks pass.
 
-## 3. Current failures
+## 3. Exact-head CI results
+
+| Workflow | Result | What it demonstrates |
+|---|---|---|
+| [Test CI #248](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395157) | 100 passed, 0 failed, 0 skipped | Full Node 22 / PostgreSQL 16.15 test suite, including tenant/RLS/grants, bounded concurrency, idempotency and recovery scenario. |
+| [Supply Chain Security #168](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395164) | PASS | Supply-chain workflow on the exact same SHA. |
+| [Factor Provenance Gate #163](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395111) | PASS | Provenance gate on the exact same SHA. |
+
+All three workflows ran against exactly 4d5659f36b9d6702cd2381484fef474bf8635438. The test log reports 100 tests, 100 passed, 0 failed, 0 skipped; test #46 (“Data Intake recovers the committed PostgreSQL ledger event after intake save failure and service restart”) passed.
+
+## 4. Root causes and corrections
 
 ### PostgreSQL bootstrap
-The Data Intake DDL used a literal backslash-n separator and lacked statement terminators. PostgreSQL failed before `carbon_ledger_app` was created. RLS/grant/idempotency/recovery failures reporting a missing role are therefore at least partly cascading setup failures. They are not independent evidence that those controls are broken, but they cannot be counted as passes.
+Earlier Data Intake DDL used a literal backslash-n separator and no proper SQL statement boundaries. PostgreSQL aborted before carbon_ledger_app creation. The correction uses proper SQL boundaries and applies the canonical schema exported by the Data Intake adapter. The subsequent missing-role cluster and bounded concurrent head assertion cleared without weakening security expectations.
 
-### Runtime ESM
-The CBAM integration test cannot link the named `InMemoryDataIntakePersistence` export under Node 22/tsx. Earlier attempts also failed with `DataIntakeService` and `DATA_INTAKE_POSTGRES_SCHEMA`. Typecheck does not prove runtime module-linking compatibility.
+### Node 22 / tsx ESM contract
+The CBAM test could not statically link the named InMemoryDataIntakePersistence export from the runtime module surface. A guarded module-namespace resolver now checks named and default-wrapped exports, and the full suite passes.
 
-### Concurrent append
-The bounded sequence/head assertion reported `0 !== 1`. This must be rerun after database setup is valid. The assertion must not be weakened.
+### Iterations
+- [#245](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38066959913): 90/99, failed SQL bootstrap cluster plus ESM.
+- [#246](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067325288): 98/99, SQL failure cluster cleared, ESM remained.
+- [#247](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067344626): 100/100 after ESM resolution.
+- [#248](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395157): 100/100 after canonical schema reuse; all three workflows passed on the same SHA.
 
-### Recovery
-The intended PostgreSQL failure/restart test did not reach the injected `simulated final intake persistence failure`; the missing application role prevented the scenario. Restart recovery is therefore **not demonstrated**.
+## 5. Remaining technical criterion
 
-## 4. Test history boundary
+Issue #28 remains open until a test kills/relaunches the process or delegates retry to a freshly started independent worker. It must commit the ledger event, inject failure at final intake persistence, establish durable failure state, restart across a real process boundary, retry the same tenant/key/request/actor/methodology, and verify one event only with identical event ID/hash and preserved factor snapshot. Add expired-lease and stale-fencing-token races, and conflict cases for payload/identity.
 
-Historical green runs remain valid evidence for their exact revisions only:
+The current passing test recreates pools/adapters/service within one process and does not satisfy that stronger criterion. The bounded concurrency test is not a sustained load/soak/throughput or multi-process stress campaign.
 
-- CI #178 / `502fe9d`: 83/83 PostgreSQL ledger tests passed.
-- CI #183 / `f7ec3f5`: 85/85 passed.
-- CI #226 / `3a02d2b`: 98/98 passed.
-- CI #227 / `74f5e00`: 98/98 passed.
+## 6. Legal, calculation integrity and release boundaries
 
-Those revisions predate or do not contain the current durable Data Intake implementation. The current candidate has not achieved an equivalent green result.
+The project records EU GDPR and UK GDPR / DPA 2018 with ICO guidance, OWASP ASVS 5.0.0, Digital Catapult CCCA recommendations, Novisto/KPMG/King's methodology fit-gaps, ADR-001 regulatory/calculation separation and source/licence provenance controls. These references are governance requirements and fit-gap work items, not legal opinions or certification claims.
 
-## 5. Stress-test boundary
+ADEME Base Carbone V23.6 and UK DESNZ 2026 candidates remain blocked until exact official artifacts, row/value, units, licence/legal basis and hashes are verified. No source hash was fabricated and redistribution remains disabled.
 
-The project has a bounded concurrent append race and historical PostgreSQL evidence for it. There is **no claim of sustained load, soak, throughput/latency benchmarking, multi-process claim/fencing stress, or production-scale stress testing**. The current bounded concurrency assertion is unresolved.
+Passing CI does not establish production authentication/authorization/MFA, deployed EU/UK data residency, retention/deletion behavior, backup/restore, independent security review, legal compliance or production authorization.
 
-## 6. Safe next sequence
-
-1. Repair SQL bootstrap using valid statement boundaries; keep `ON_ERROR_STOP=1`.
-2. Verify the application role is non-owner, `NOSUPERUSER`, `NOBYPASSRLS`, and has only the intended effective grants before dependent tests run.
-3. Add a minimal Node 22/tsx consumer smoke test and establish one consistent ESM/TypeScript resolution strategy.
-4. Rerun RLS, cross-tenant, grants, append-only, tenant-head, rollback, idempotency, pool-reuse, concurrency and bigint tests.
-5. Prove recovery across a fresh process/worker: commit ledger event → fail final intake save → persist failure state → restart → retry same request → verify one identical ledger event, factor snapshot and calculated intake state. Include conflicting payload/identity, expired lease and stale fencing-token cases.
-6. Require normal typecheck, test-inclusive typecheck, full test suite and all three CI workflows to pass on one exact SHA.
-7. Keep independent security/privacy/legal review, deployment authentication/authorization, production database verification, GDPR/data-flow/residency evidence and backup/restore as separate release gates.
-
-## 7. Integrity and legal boundary
-
-The repository incorporates EU GDPR/UK GDPR and ICO guidance, OWASP ASVS 5.0.0, Digital Catapult CCCA recommendations, Novisto fit-gap guidance, KPMG GHG reporting guidance, King's College methodology, source/licence provenance controls and ADR-001 regulatory/calculation separation. These are project governance references and fit-gap requirements, not compliance attestations.
-
-ADEME Base Carbone V23.6 and UK DESNZ 2026 candidates remain blocked until exact official artifacts, rows/values, licence/legal basis and hashes are verified. No source hash is fabricated and redistribution remains disabled.
-
-No CI result authorises merge, deployment, production migration, legal/compliance claims, residency commitments or independent security certification.
+PR #21 remains draft/open/unmerged. Issue #27 remains open pending independent review and formal readiness decision. Issue #28 remains open for process/worker-boundary recovery.

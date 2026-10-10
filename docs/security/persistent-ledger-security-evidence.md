@@ -10,6 +10,16 @@ This evidence record maps the persistent ledger's security requirements to imple
 
 **Assurance boundary:** GitHub commit SHAs, workflow run IDs, and GitHub-hosted logs provide source/run traceability. This page does not claim a separate cryptographic signing attestation, SLSA provenance statement, independent penetration test, or production-environment certification. The Supply Chain Security and Factor Provenance workflows are recorded separately below.
 
+## Latest candidate acceptance status — 2026-10-10
+
+The latest candidate SHA 4d5659f36b9d6702cd2381484fef474bf8635438 passed all three relevant workflows on one identical source revision:
+
+- [Test CI #248](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395157): PostgreSQL 16.15, 100 passed, 0 failed, 0 skipped.
+- [Supply Chain Security #168](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395164): PASS.
+- [Factor Provenance Gate #163](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395111): PASS.
+
+This supersedes prior failure-status notes for the Data Intake SQL bootstrap and ESM fixes. Historical run records below remain immutable and valid only for their pinned commits. The passing suite includes RLS/role grants, append-only controls, bounded concurrent append and the Data Intake recovery test after reinitialising pools/adapters in a single process. A true process/worker-boundary restart remains open in Issue #28. Independent review, target deployment verification and legal/privacy/release gates remain pending.
+
 ## 2. Traceability identifiers
 
 | Evidence item | Immutable/reference identifier | Result |

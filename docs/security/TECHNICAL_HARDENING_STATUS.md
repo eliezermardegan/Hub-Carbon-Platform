@@ -30,7 +30,7 @@ PR: #21
 | Concurrent sequence allocation | Implemented + integration tested | CI #178 exercises competing concurrent appends and checks tenant sequence/head consistency in PostgreSQL 16.15; this is a bounded race test, not a sustained load/soak benchmark. |
 | Hash-chain verification | Existing implementation + tests | `packages/carbon-ledger/src/domain.ts` and ledger tests. |
 | Hash-chain as tamper-proof storage | Correctly not claimed | Architecture documentation explicitly limits the claim. |
-| Real PostgreSQL integration suite | **TESTED — EVIDENCE RECORDED** | CI #178 on exact head `502fe9dfd6dafb04f4850d1bd36795c45cf96462` passed `npm ci`, `npm run typecheck`, and `npm test` against disposable PostgreSQL 16.15: 83 passed, 0 failed, 0 skipped. |
+| Real PostgreSQL integration suite | TESTED — EVIDENCE RECORDED on latest candidate; independent review pending | Test CI #248 on SHA 4d5659f36b9d6702cd2381484fef474bf8635438 passed on PostgreSQL 16.15: 100 passed, 0 failed, 0 skipped. Canonical Data Intake schema setup, role/grant assertions, RLS, bounded concurrency, idempotency and same-process recovery passed. True process/worker-boundary recovery remains Issue #28. |
 
 ## Required P0 integration scenarios
 
@@ -111,8 +111,19 @@ The implementation head 3a02d2b7081b93e9bdd920b7be2db7f396e88745 passed:
 These checks cover the code head, not this subsequent documentation refresh. Durable intake claims, cross-process failure recovery and concrete production authentication remain blockers; API authorization and data-residency deployment evidence are not complete.
 
 
-## Durable PostgreSQL Data Intake follow-up — 2026-10-10
+## Durable PostgreSQL Data Intake follow-up — validation passed, process-boundary recovery open (2026-10-10)
 
-Status: **IMPLEMENTED — UNVERIFIED**. A PostgreSQL adapter has been added with tenant-scoped JSONB records, unique tenant/idempotency-key activity rows, transaction-local tenant context, RLS, lease expiry and claim fencing tokens. The integration suite now includes a real PostgreSQL scenario: commit ledger event, simulate failure before final calculated-state intake save, close the first pool, create fresh adapters/service, retry, and assert the original event/activity is recovered without a duplicate.
+Latest implementation SHA: 4d5659f36b9d6702cd2381484fef474bf8635438
+Status: **TESTED — EVIDENCE RECORDED** for the current PostgreSQL integration suite; independent review pending.
 
-Initial Test CI attempts failed during module export/import resolution before the new recovery scenario executed. Import-resolution fixes have been pushed; the exact current-head CI result must be checked before declaring the scenario tested. Do not mark this work validated until the recovery test passes and Test CI, Supply Chain Security, and Factor Provenance Gate all pass on the same final SHA. PR #21 remains draft and Issue #27 remains open. No production migration or deployment occurred.
+- [Test CI #248](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395157): **100 passed, 0 failed, 0 skipped**. npm ci, normal typecheck, typecheck:tests and npm test all passed under Node.js 22 against disposable PostgreSQL 16.15.
+- [Supply Chain Security #168](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395164): PASS on the same SHA.
+- [Factor Provenance Gate #163](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395111): PASS on the same SHA.
+
+The SQL issue was fixed by using valid statement boundaries and applying the adapter's canonical DATA_INTAKE_POSTGRES_SCHEMA in the integration test instead of duplicated DDL. The Node 22/tsx ESM issue was resolved for the CBAM test using a namespace import and guarded named/default-export resolution.
+
+The full suite includes RLS and least-privilege application-role checks, bounded concurrent append, idempotency and the Data Intake recovery scenario. Test #46 passed. It recreates pools/adapters/service in the same Node process; it does not yet simulate a genuine OS process exit/relaunch or retry in a separately started worker. Track that remaining criterion in [Issue #28](https://github.com/eliezermardegan/Hub-Carbon-Platform/issues/28).
+
+A green CI result is not production approval or legal/security certification. Independent security review, target-environment database-role verification, real auth/authz/MFA, data-protection/residency/retention/deletion evidence, backup/restore, and privacy/legal review remain separate release gates. ADEME Base Carbone V23.6 and UK DESNZ 2026 factor candidates remain blocked until exact source artifacts, rows/values, licence/legal basis and hashes are verified.
+
+PR #21 remains draft/open/unmerged; Issue #27 remains open pending independent review and the project owner's readiness decision. Issue #28 remains open for process/worker-boundary recovery.
