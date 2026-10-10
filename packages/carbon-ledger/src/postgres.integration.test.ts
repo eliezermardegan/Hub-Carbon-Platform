@@ -12,6 +12,37 @@ const tenantB = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const tenantC = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const actor = "22222222-2222-4222-8222-222222222222";
 
+const tenantD = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+
+function persistedEvent(overrides: Partial<import("./persistence.js").PersistedLedgerEvent> = {}) {
+  return {
+    id: "12121212-1212-4212-8212-121212121212",
+    tenantId: tenantD,
+    actorId: actor,
+    eventType: "entry" as const,
+    sequence: 1,
+    recordedAt: "2026-10-10T00:00:00.000Z",
+    evidence: [],
+    methodologyVersion: "integration-test",
+    previousEntryHash: null,
+    eventHash: "event-hash-1",
+    idempotencyKey: "integration-idem-key",
+    ...overrides,
+  };
+}
+
+function persistedAudit(eventId: string) {
+  return {
+    id: "13131313-1313-4313-8313-131313131313",
+    tenantId: tenantD,
+    actorId: actor,
+    action: "append" as const,
+    eventId,
+    recordedAt: "2026-10-10T00:00:00.000Z",
+    metadata: {},
+  };
+}
+
 function psql(sql: string): string {
   if (!databaseUrl) throw new Error("PG_INTEGRATION_URL is required");
   return execFileSync("psql", [databaseUrl, "-X", "-v", "ON_ERROR_STOP=1", "-A", "-t", "-c", sql], { encoding: "utf8" }).trim();
@@ -92,6 +123,91 @@ test("PostgresLedgerPersistence executes tenant-scoped reads through the pg driv
     assert.deepEqual(await persistence.listAudit(tenantC), []);
     assert.equal(await persistence.getHead(tenantC), null);
     await assert.rejects(() => persistence.listEvents(tenantB), /does not match trusted context/);
+  } finally {
+    await pool.end();
+  }
+});
+
+
+test("pooled adapter reads do not leak tenant context across reused connections", { skip: !enabled }, async () => {
+  const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+  let activeTenant = tenantA;
+  try {
+    const persistence = new PostgresLedgerPersistence(pool as unknown as PgPool, {
+      getTrustedTenantContext: () => ({ tenantId: activeTenant, actorId: actor }),
+    });
+    assert.equal((await persistence.listEvents(tenantA)).length, 1);
+    activeTenant = tenantC;
+    assert.deepEqual(await persistence.listEvents(tenantC), []);
+    activeTenant = tenantA;
+    assert.equal((await persistence.listEvents(tenantA)).length, 1);
+    assert.deepEqual(await persistence.listAudit(tenantC).catch(error => {
+      assert.match(String(error), /does not match trusted context/);
+      return [];
+    }), []);
+  } finally {
+    await pool.end();
+  }
+});
+
+test("concurrent appends serialize tenant sequence and head updates", { skip: !enabled }, async () => {
+  const pool = new Pool({ connectionString: databaseUrl, max: 4 });
+  try {
+    const persistence = new PostgresLedgerPersistence(pool as unknown as PgPool, {
+      getTrustedTenantContext: () => ({ tenantId: tenantD, actorId: actor }),
+    });
+    const first = persistedEvent();
+    const second = persistedEvent({
+      id: "14141414-1414-4414-8414-141414141414",
+      eventHash: "event-hash-2",
+      idempotencyKey: "integration-idem-key-2",
+    });
+    const results = await Promise.allSettled([
+      persistence.appendEvent(first, persistedAudit(first.id)),
+      persistence.appendEvent(second, persistedAudit(second.id)),
+    ]);
+    assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
+    assert.equal(results.filter(result => result.status === "rejected").length, 1);
+    const events = await persistence.listEvents(tenantD);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].sequence, 1);
+    assert.equal(await persistence.getHead(tenantD), events[0].eventHash);
+  } finally {
+    await pool.end();
+  }
+});
+
+test("application idempotency replays equivalent payload and rejects conflicting payload", { skip: !enabled }, async () => {
+  const pool = new Pool({ connectionString: databaseUrl, max: 2 });
+  try {
+    const persistence = new PostgresLedgerPersistence(pool as unknown as PgPool, {
+      getTrustedTenantContext: () => ({ tenantId: tenantD, actorId: actor }),
+    });
+    const event = persistedEvent({
+      id: "15151515-1515-4515-8515-151515151515",
+      idempotencyKey: "equivalent-replay-key",
+      eventHash: "equivalent-replay-hash",
+    });
+    assert.equal(await persistence.appendEvent(event, persistedAudit(event.id)), null);
+    const replay = await persistence.appendEvent(event, persistedAudit(event.id));
+    assert.equal(replay?.id, event.id);
+    await assert.rejects(
+      () => persistence.appendEvent({ ...event, id: "16161616-1616-4616-8616-161616161616", methodologyVersion: "different-payload" }, persistedAudit("16161616-1616-4616-8616-161616161616")),
+      /idempotency key conflict: payload differs from original operation/,
+    );
+    assert.equal((await persistence.listEvents(tenantD)).length, 1);
+  } finally {
+    await pool.end();
+  }
+});
+
+test("adapter rejects PostgreSQL bigint sequences outside JavaScript safe integer range", { skip: !enabled }, async () => {
+  const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+  try {
+    const persistence = new PostgresLedgerPersistence(pool as unknown as PgPool, {
+      getTrustedTenantContext: () => ({ tenantId: tenantB, actorId: actor }),
+    });
+    await assert.rejects(() => persistence.listEvents(tenantB), /ledger sequence exceeds JavaScript safe integer range/);
   } finally {
     await pool.end();
   }
