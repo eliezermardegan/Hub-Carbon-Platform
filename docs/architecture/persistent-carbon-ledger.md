@@ -46,6 +46,22 @@ The event is the accounting source of truth. The audit table records actor, acti
 
 Per-tenant verification checks sequence continuity, previous-hash links, event hashes, factor snapshot identity and calculation consistency.
 
+## Database roles and RLS review
+
+The final integration review passed on the branch CI PostgreSQL 16 service. The disposable test schema verifies that `carbon_ledger_app` is `NOSUPERUSER`, `NOBYPASSRLS`, is not the owner of any ledger table, and has no `CREATE` privilege on the public schema. Tenant isolation policies are enabled and forced on `carbon_ledger_events`, `carbon_ledger_audit`, and `carbon_ledger_tenant_heads`.
+
+Verified application-role table privileges:
+
+| Table | SELECT | INSERT | UPDATE | DELETE |
+| --- | --- | --- | --- | --- |
+| `carbon_ledger_events` | Allowed | Allowed | Denied | Denied |
+| `carbon_ledger_audit` | Allowed | Allowed | Denied | Denied |
+| `carbon_ledger_tenant_heads` | Allowed | Allowed | Allowed | Denied |
+
+Integration tests verify that tenant RLS hides cross-tenant rows and rejects cross-tenant inserts; events and audit rows reject privileged update/delete through append-only triggers; tenant heads reject deletion, tenant reassignment, clearing while events exist, and hashes that do not reference an existing event. An application-role adapter test verifies that legitimate tenant-head updates still work for concurrent append and idempotency flows. These checks run only against the disposable CI database, not production.
+
 ## Test status
 
-The real-PostgreSQL CI workflow passed on commit `310d4e1` in run [#164](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38051129837). The workflow's `npm ci`, `npm run typecheck`, and `npm test` steps all succeeded against its PostgreSQL service (80 tests passed, 0 failed). This includes pooled tenant-context isolation, concurrent appends and head consistency, equivalent/conflicting idempotency replay, audit identity checks, hash-chain tamper/link/sequence checks, and adapter rejection of unsafe bigint sequences. Issue [#27](https://github.com/eliezermardegan/Hub-Carbon-Platform/issues/27) remains open for the final review of RLS policy and role grants across every ledger table. No production database was contacted.
+The real-PostgreSQL CI workflow passed on commit `a3dbcd2` in run [#173](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38053103506). The workflow's `npm ci`, `npm run typecheck`, and `npm test` steps all succeeded against the PostgreSQL 16 service: **83 tests passed, 0 failed**. The [Supply Chain Security #93](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38053103518) and [Factor Provenance Gate #88](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38053103490) workflows also passed on the same commit.
+
+The suite includes pooled tenant-context isolation, concurrent appends and head consistency, equivalent/conflicting idempotency replay, audit identity checks, hash-chain tamper/link/sequence checks, safe-integer boundary rejection, least-privilege grant-matrix assertions, and cross-table mutation-guard tests. The final RLS/role-grant checklist in issue [#27](https://github.com/eliezermardegan/Hub-Carbon-Platform/issues/27) is covered by this passing integration run; revalidate this document update through CI before closing the tracker. No production database was contacted.
