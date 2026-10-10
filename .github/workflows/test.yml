@@ -33,4 +33,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run typecheck:tests
+      - name: Verify PostgreSQL tenant privileges and RLS in disposable CI database
+        env:
+          HUB_CARBON_POSTGRES_SECURITY_AUDIT_CI: "true"
+        run: node scripts/verify-postgres-tenant-security.mjs
       - run: npm test
