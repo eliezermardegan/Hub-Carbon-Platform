@@ -70,3 +70,32 @@ Implementation/test head `e65f273f15f0b7667d2c92d632f01f0178891ac2` passed all t
 The passing suite includes the added HTTP boundary checks, cross-tenant request rejection before persistence/factor resolution, and PostgreSQL RLS isolation for Data Intake records and activity claims. The test corrections use namespace/default-export resolution for the Node 22/tsx test boundary and parse the actual newline-separated `psql` output; no security assertions were removed.
 
 This proves the tested behavior for the implemented code surface and disposable CI database. It does **not** establish a deployed identity provider/JWT/session/MFA integration, a complete RBAC/object-permission model, authorization for missing worker/document/export routes, or deployment configuration correctness. PR #21 remains draft/open; Issue #27 remains open for environment evidence, independent review and a formal readiness decision.
+
+
+## 7. PostgreSQL deployment privilege/RLS review — 2026-10-10
+
+### Verified in repository code
+
+- `POSTGRES_SCHEMA` enables and forces RLS on `carbon_ledger_events`, `carbon_ledger_audit`, and `carbon_ledger_tenant_heads`. Their policies use `app.tenant_id` in both `USING` and `WITH CHECK`.
+- `DATA_INTAKE_POSTGRES_SCHEMA` enables and forces RLS on `data_intake_records` and `data_intake_activities`; both policies use `app.tenant_id` for row visibility and writes.
+- The PostgreSQL integration test creates `carbon_ledger_app` as `NOLOGIN NOSUPERUSER NOBYPASSRLS`, checks ledger table ownership and a subset of effective table privileges, and exercises `SET ROLE` against the CI PostgreSQL service.
+- The legacy carbon operational tables in `infra/postgres/migrations/002_data_intake.sql` also enable and force RLS with company-scoped policies.
+
+### Deployment gap
+
+The migrations and current repository do not establish evidence of the actual deployment's login role, role membership options, effective grants, table owners, default privileges, or schema CREATE rights. The CI integration role matrix is not evidence of production's effective authorization. The repository's migrations also do not create a complete, deployment-specific runtime role/grant configuration.
+
+Added a read-only audit script at `infra/postgres/verify_tenant_security.sql`. It fails closed when expected roles, attributes, memberships, protected tables, RLS/ FORCE RLS, tenant policy predicates, ownership, or effective table privileges diverge from the explicit contract. Run it only against a staging/deployment-equivalent database using a trusted audit principal; it does not change roles or grants.
+
+Tracking issue: [#29 — Verify effective PostgreSQL privileges and tenant RLS in deployment](https://github.com/eliezermardegan/Hub-Carbon-Platform/issues/29).
+
+### Important threat-model boundary
+
+`app.tenant_id` is a PostgreSQL custom setting. Transaction-local `set_config(..., true)` and RLS protect against missing context and application queries that stay within their trusted tenant boundary. They do not, by themselves, prevent arbitrary SQL execution under the same role from setting another tenant's custom GUC. Parameterized queries, no untrusted SQL execution, constrained DB privileges, and trusted server-side tenant derivation remain necessary. If the threat model includes arbitrary SQL injection with database-role execution, consider a stronger tenant identity mechanism (for example, database-authenticated per-tenant roles or a carefully designed trusted context setter) before production authorization.
+
+### Required before advancing
+
+- Run the read-only audit against the actual staging/deployment-equivalent database and preserve redacted output.
+- Verify actual role memberships, grants (including inherited/default privileges), table owners, schema privileges, and migration principal.
+- Test absent context, cross-tenant reads/writes, and pooled-connection reuse under the actual runtime role.
+- Do not close Issue #29 or declare production authorization ready based on CI alone.
