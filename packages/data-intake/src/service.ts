@@ -42,6 +42,7 @@ export class DataIntakeService {
       }
       return { activity: claim.activity, handoff: toLedgerHandoff(claim.activity) };
     }
+    const claimToken = claim.claimToken;
 
     // Reuse the first activity ID for every retry. The ledger uses that stable
     // ID as its own idempotency key, including recovery after a partial failure.
@@ -89,7 +90,7 @@ export class DataIntakeService {
             factorVersion: committed.factor.version,
             calculationStatus: "calculated",
           };
-          await this.persistence.saveActivity(activity);
+          await this.persistence.saveActivity(activity, claimToken);
           terminal = true;
           return { activity, handoff: toLedgerHandoff(activity), calculation: committed.calculation, ledgerEvent: committed };
         }
@@ -97,7 +98,7 @@ export class DataIntakeService {
 
       if (activity.classificationStatus !== "classified" || activity.dataAvailability === "not_available") {
         activity = { ...activity, calculationStatus: "not_ready" };
-        await this.persistence.saveActivity(activity);
+        await this.persistence.saveActivity(activity, claimToken);
         terminal = true;
         return { activity, handoff: toLedgerHandoff(activity) };
       }
@@ -105,7 +106,7 @@ export class DataIntakeService {
       const factor = await this.factorResolver.resolve(activity);
       if (!factor) {
         activity = { ...activity, calculationStatus: "not_ready" };
-        await this.persistence.saveActivity(activity);
+        await this.persistence.saveActivity(activity, claimToken);
         terminal = true;
         return { activity, handoff: toLedgerHandoff(activity) };
       }
@@ -121,7 +122,7 @@ export class DataIntakeService {
           factorVersion: factor.version,
           calculationStatus: "blocked",
         };
-        await this.persistence.saveActivity(activity);
+        await this.persistence.saveActivity(activity, claimToken);
         terminal = true;
         throw new Error("factor is not approved for import or calculation");
       }
@@ -136,7 +137,7 @@ export class DataIntakeService {
       const quantity = activity.normalizedQuantity ?? activity.quantity;
       if (quantity === undefined) {
         activity = { ...activity, calculationStatus: "not_ready" };
-        await this.persistence.saveActivity(activity);
+        await this.persistence.saveActivity(activity, claimToken);
         terminal = true;
         return { activity, handoff: toLedgerHandoff(activity) };
       }
@@ -166,13 +167,13 @@ export class DataIntakeService {
       );
 
       activity = { ...activity, calculationStatus: "calculated" };
-      await this.persistence.saveActivity(activity);
+      await this.persistence.saveActivity(activity, claimToken);
       terminal = true;
       return { activity, handoff: toLedgerHandoff(activity), calculation, ledgerEvent };
     } catch (error) {
       if (!terminal) {
         try {
-          await this.persistence.saveActivity({ ...activity, calculationStatus: "failed" });
+          await this.persistence.saveActivity({ ...activity, calculationStatus: "failed" }, claimToken);
         } catch {
           // Preserve the original operation error. Release below lets a retry
           // reclaim a processing record if persistence itself is unavailable.
@@ -180,7 +181,7 @@ export class DataIntakeService {
       }
       throw error;
     } finally {
-      await this.persistence.releaseActivityClaim(context.tenantId, requested.idempotencyKey);
+      await this.persistence.releaseActivityClaim(context.tenantId, requested.idempotencyKey, claimToken);
     }
   }
 

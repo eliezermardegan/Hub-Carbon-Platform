@@ -4,6 +4,11 @@ import { execFileSync } from "node:child_process";
 import { POSTGRES_SCHEMA } from "./persistence.js";
 import { Pool } from "pg";
 import { PostgresLedgerPersistence, type PgPool } from "./postgres.js";
+import { CarbonLedgerDomain } from "./domain.js";
+import { DataIntakeService } from "../../data-intake/src/service.js";
+import { createActivity, type ActivityInput, type ActivityRecord } from "../../data-intake/src/index.js";
+import { DATA_INTAKE_POSTGRES_SCHEMA, PostgresDataIntakePersistence } from "../../data-intake/src/postgres.js";
+import type { DataIntakePersistence } from "../../data-intake/src/persistence.js";
 
 const databaseUrl = process.env.PG_INTEGRATION_URL;
 const enabled = Boolean(databaseUrl);
@@ -14,6 +19,8 @@ const actor = "22222222-2222-4222-8222-222222222222";
 
 const tenantD = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const tenantE = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+const tenantF = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+const actorF = "ffffffff-ffff-4fff-8fff-ffffffffffff";
 
 function persistedEvent(overrides: Partial<import("./persistence.js").PersistedLedgerEvent> = {}) {
   return {
@@ -80,8 +87,9 @@ test("real PostgreSQL integration prerequisites are explicit", { skip: !enabled 
   assert.match(psql("select version()"), /^PostgreSQL /);
   psql("drop schema public cascade; create schema public; grant usage on schema public to public; revoke create on schema public from public;");
   psql(POSTGRES_SCHEMA);
+  psql(DATA_INTAKE_POSTGRES_SCHEMA);
   psql(`do $$ begin if not exists (select from pg_roles where rolname = 'carbon_ledger_app') then create role carbon_ledger_app nologin nosuperuser nobypassrls; end if; end $$;`);
-  psql("grant usage on schema public to carbon_ledger_app; grant select, insert on carbon_ledger_events, carbon_ledger_audit to carbon_ledger_app; grant select, insert, update on carbon_ledger_tenant_heads to carbon_ledger_app;");
+  psql("grant usage on schema public to carbon_ledger_app; grant select, insert on carbon_ledger_events, carbon_ledger_audit to carbon_ledger_app; grant select, insert, update on carbon_ledger_tenant_heads to carbon_ledger_app; grant select, insert, update on data_intake_records, data_intake_activities to carbon_ledger_app;");
   assert.equal(psql("select rolsuper || ':' || rolbypassrls from pg_roles where rolname='carbon_ledger_app'"), "false:false");
   assert.equal(psql("select count(*) from pg_class where relname in ('carbon_ledger_events','carbon_ledger_audit','carbon_ledger_tenant_heads') and pg_get_userbyid(relowner)='carbon_ledger_app'"), "0", "application role must not own any ledger table");
   assert.equal(psql("select array_to_string(array[has_table_privilege('carbon_ledger_app','carbon_ledger_events','select'),has_table_privilege('carbon_ledger_app','carbon_ledger_events','insert'),has_table_privilege('carbon_ledger_app','carbon_ledger_events','update'),has_table_privilege('carbon_ledger_app','carbon_ledger_events','delete'),has_table_privilege('carbon_ledger_app','carbon_ledger_audit','select'),has_table_privilege('carbon_ledger_app','carbon_ledger_audit','insert'),has_table_privilege('carbon_ledger_app','carbon_ledger_audit','update'),has_table_privilege('carbon_ledger_app','carbon_ledger_audit','delete'),has_table_privilege('carbon_ledger_app','carbon_ledger_tenant_heads','select'),has_table_privilege('carbon_ledger_app','carbon_ledger_tenant_heads','insert'),has_table_privilege('carbon_ledger_app','carbon_ledger_tenant_heads','update'),has_table_privilege('carbon_ledger_app','carbon_ledger_tenant_heads','delete')],':')"), "t:t:f:f:t:t:f:f:t:t:t:f", "application table privileges must follow least-privilege matrix");
@@ -265,4 +273,44 @@ test("adapter rejects PostgreSQL bigint sequences outside JavaScript safe intege
   } finally {
     await pool.end();
   }
+});
+
+test("Data Intake recovers the committed PostgreSQL ledger event after intake save failure and service restart", { skip: !enabled }, async () => {
+  const context = { tenantId: tenantF, actorId: actorF, methodologyVersion: "data-intake-recovery-integration", now: "2026-10-10T12:00:00.000Z" };
+  const input: ActivityInput = { companyId: tenantF, reportingPeriodId: "2026", scope: 2, activityType: "electricity", quantity: 100, unit: "kWh", method: "activity_based", dataAvailability: "provided", dataQuality: { level: "A", completeness: 1, rationale: "integration fixture" }, confidence: { score: 1, level: "high", source: "manual", humanReviewed: true }, evidenceIds: ["recovery-evidence-1"], classificationStatus: "classified", calculationStatus: "ready", idempotencyKey: "data-intake-postgres-restart-recovery" };
+  const factor = { id: "postgres-recovery-factor", version: "1", status: "verified", name: "Synthetic test factor", scope: 2, category: "electricity", geography: "TEST", activityUnit: "kWh", factorUnit: "kgCO2e/kWh", value: 0.4, dataQuality: "high", provenance: { sourceName: "Synthetic fixture", sourceUrl: "https://example.invalid/factor", sourceVersion: "fixture-v1", license: "test-only", legalBasis: "Synthetic fixture; not production evidence", attributionRequired: false, redistributionAllowed: true, sourceContentSha256: "ba7b10b5afb62f2852574f5969acaa64ba71d4f062ac2224f90f9ec23435fdaa", retrievedAt: "2026-01-01T00:00:00Z", geography: "TEST", originalUnit: "kWh", normalizedUnit: "kWh", transformation: "No transformation", evidenceRef: "test://factor/postgres-recovery-factor" } } as const;
+  const provider = { getTrustedTenantContext: () => ({ tenantId: tenantF, actorId: actorF }) };
+  const pool1 = new Pool({ connectionString: databaseUrl, max: 3 });
+  const appPool1 = asApplicationRolePool(pool1);
+  const intake1 = new PostgresDataIntakePersistence(appPool1, provider);
+  let failOnce = true;
+  const failing = new Proxy(intake1, { get(target, prop, receiver) { if (prop === "saveActivity") return async (value: ActivityRecord, token?: string) => { if (value.calculationStatus === "calculated" && failOnce) { failOnce = false; throw new Error("simulated final intake persistence failure"); } return target.saveActivity(value, token); }; const member = Reflect.get(target, prop, receiver) as unknown; return typeof member === "function" ? member.bind(target) : member; } }) as DataIntakePersistence;
+  let resolverCalls = 0;
+  const ledger1 = new PostgresLedgerPersistence(appPool1, provider);
+  const service1 = new DataIntakeService(failing, { resolve: async () => { resolverCalls++; return factor as any; } }, new CarbonLedgerDomain(ledger1));
+  await assert.rejects(() => service1.ingestActivity(createActivity(input), context), /simulated final intake persistence failure/);
+  const originalEvents = await ledger1.listEvents(tenantF);
+  assert.equal(originalEvents.length, 1);
+  const originalEvent = originalEvents[0];
+  const savedBeforeRestart = (await intake1.listActivities(tenantF, "2026"))[0];
+  assert.ok(savedBeforeRestart);
+  assert.equal(savedBeforeRestart.calculationStatus, "failed");
+  assert.equal(savedBeforeRestart.factorId, factor.id);
+  assert.equal(savedBeforeRestart.factorVersion, factor.version);
+  await pool1.end();
+  const pool2 = new Pool({ connectionString: databaseUrl, max: 3 });
+  const appPool2 = asApplicationRolePool(pool2);
+  const intake2 = new PostgresDataIntakePersistence(appPool2, provider);
+  const ledger2 = new PostgresLedgerPersistence(appPool2, provider);
+  const service2 = new DataIntakeService(intake2, { resolve: async () => { resolverCalls++; return factor as any; } }, new CarbonLedgerDomain(ledger2));
+  const recovered = await service2.ingestActivity(createActivity(input), context);
+  assert.equal(recovered.activity.activityId, savedBeforeRestart.activityId);
+  assert.equal(recovered.activity.calculationStatus, "calculated");
+  assert.equal(recovered.ledgerEvent?.id, originalEvent.id);
+  assert.equal(recovered.ledgerEvent?.eventHash, originalEvent.eventHash);
+  assert.equal(resolverCalls, 1, "recovery must use the persisted factor snapshot");
+  assert.equal((await ledger2.listEvents(tenantF)).length, 1, "retry must not duplicate the committed ledger event");
+  assert.equal((await intake2.listActivities(tenantF, "2026")).length, 1);
+  assert.equal((await intake2.listActivities(tenantF, "2026"))[0].calculationStatus, "calculated");
+  await pool2.end();
 });

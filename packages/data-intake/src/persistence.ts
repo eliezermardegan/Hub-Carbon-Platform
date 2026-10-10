@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { ActivityRecord, Company, Evidence, ReportingPeriod, Site, Source, SourceDocument } from "./index";
 
 export type IntakeClaim =
-  | { kind: "claimed"; activity: ActivityRecord }
+  | { kind: "claimed"; activity: ActivityRecord; claimToken: string }
   | { kind: "busy" }
   | { kind: "conflict" }
   | { kind: "existing"; activity: ActivityRecord };
@@ -19,8 +19,8 @@ export interface DataIntakePersistence {
   getDocument(c: string, d: string): Promise<SourceDocument | null>;
   saveEvidence(v: Evidence): Promise<void>;
   claimActivity(v: ActivityRecord, payloadHash: string): Promise<IntakeClaim>;
-  releaseActivityClaim(companyId: string, idempotencyKey: string): Promise<void>;
-  saveActivity(v: ActivityRecord): Promise<ActivityRecord | null>;
+  releaseActivityClaim(companyId: string, idempotencyKey: string, claimToken?: string): Promise<void>;
+  saveActivity(v: ActivityRecord, claimToken?: string): Promise<ActivityRecord | null>;
   getActivity(c: string, id: string): Promise<ActivityRecord | null>;
   listActivities(c: string, p: string): Promise<ActivityRecord[]>;
 }
@@ -55,7 +55,7 @@ export class InMemoryDataIntakePersistence implements DataIntakePersistence {
   private evidence = new Map<string, Evidence>();
   private activities = new Map<string, ActivityRecord>();
   private idempotency = new Map<string, ActivityClaimRecord>();
-  private inFlight = new Set<string>();
+  private inFlight = new Map<string, string>();
 
   async saveCompany(v: Company) { this.companies.set(v.companyId, v); }
   async getCompany(id: string) { return this.companies.get(id) ?? null; }
@@ -79,25 +79,32 @@ export class InMemoryDataIntakePersistence implements DataIntakePersistence {
         return { kind: "existing", activity: structuredClone(saved) };
       }
       if (this.inFlight.has(key)) return { kind: "busy" };
-      this.inFlight.add(key);
+      const claimToken = randomUUID();
+      this.inFlight.set(key, claimToken);
       current.status = "processing";
-      return { kind: "claimed", activity: structuredClone(saved) };
+      return { kind: "claimed", activity: structuredClone(saved), claimToken };
     }
+    const claimToken = randomUUID();
     this.idempotency.set(key, { activityId: v.activityId, payloadHash, status: "processing" });
     this.activities.set(v.activityId, structuredClone({ ...v, calculationStatus: "processing" }));
-    this.inFlight.add(key);
-    return { kind: "claimed", activity: structuredClone(this.activities.get(v.activityId)!) };
+    this.inFlight.set(key, claimToken);
+    return { kind: "claimed", activity: structuredClone(this.activities.get(v.activityId)!), claimToken };
   }
 
-  async releaseActivityClaim(companyId: string, idempotencyKey: string) { this.inFlight.delete(companyId + ":" + idempotencyKey); }
+  async releaseActivityClaim(companyId: string, idempotencyKey: string, claimToken?: string) {
+    const key = companyId + ":" + idempotencyKey;
+    if (claimToken === undefined || this.inFlight.get(key) === claimToken) this.inFlight.delete(key);
+  }
 
-  async saveActivity(v: ActivityRecord): Promise<ActivityRecord | null> {
+  async saveActivity(v: ActivityRecord, claimToken?: string): Promise<ActivityRecord | null> {
     const key = v.companyId + ":" + v.idempotencyKey;
     const claim = this.idempotency.get(key);
     if (claim) {
+      const activeToken = this.inFlight.get(key);
+      if (claimToken !== undefined && activeToken !== claimToken) throw new Error("intake claim lease lost");
       this.activities.set(claim.activityId, structuredClone({ ...v, activityId: claim.activityId }));
       claim.status = v.calculationStatus;
-      if (v.calculationStatus !== "processing" && v.calculationStatus !== "ready") this.inFlight.delete(key);
+      if (v.calculationStatus !== "processing" && v.calculationStatus !== "ready" && (claimToken === undefined || activeToken === claimToken)) this.inFlight.delete(key);
       return structuredClone(this.activities.get(claim.activityId)!);
     }
     this.activities.set(v.activityId, structuredClone(v));
