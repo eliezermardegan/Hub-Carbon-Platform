@@ -44,10 +44,11 @@ export class DataIntakeService {
 
     // Reuse the first activity ID for every retry. The ledger uses that stable
     // ID as its own idempotency key, including recovery after a partial failure.
+    const { factorId: _untrustedFactorId, factorVersion: _untrustedFactorVersion, ...requestFields } = requested;
     let activity: ActivityRecord = {
-      ...requested,
+      ...requestFields,
       activityId: claim.activity.activityId,
-      calculationStatus: requested.calculationStatus,
+      calculationStatus: "processing",
     };
     let terminal = false;
 
