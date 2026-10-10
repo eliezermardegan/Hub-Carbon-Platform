@@ -33,8 +33,8 @@ BEGIN
   END IF;
 
   IF NOT v_runtime.rolcanlogin OR v_runtime.rolsuper OR v_runtime.rolcreatedb OR
-     v_runtime.rolcreaterole OR v_runtime.rolreplication OR v_runtime.rolbypassrls OR NOT v_runtime.rolinherit THEN
-    RAISE EXCEPTION 'security audit failed: carbon_ledger_runtime must be LOGIN, INHERIT, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS';
+     v_runtime.rolcreaterole OR v_runtime.rolreplication OR v_runtime.rolbypassrls OR v_runtime.rolinherit THEN
+    RAISE EXCEPTION 'security audit failed: carbon_ledger_runtime must be LOGIN, NOINHERIT, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS';
   END IF;
 
   IF NOT has_schema_privilege('carbon_ledger_app', 'public', 'USAGE') OR
@@ -51,9 +51,9 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_auth_members
     WHERE roleid = v_app.oid AND member = v_runtime.oid
-      AND inherit_option AND set_option AND NOT admin_option
+      AND NOT inherit_option AND set_option AND NOT admin_option
   ) THEN
-    RAISE EXCEPTION 'security audit failed: carbon_ledger_runtime must inherit and be able to SET ROLE to carbon_ledger_app without admin option';
+    RAISE EXCEPTION 'security audit failed: carbon_ledger_runtime must not inherit app privileges directly, but must be able to SET ROLE without admin option';
   END IF;
 
   IF EXISTS (
@@ -126,7 +126,7 @@ BEGIN
       ('data_intake_activities',     true, true, true,  false, false, false, false)
     ) AS expected(table_name, can_select, can_insert, can_update, can_delete, can_truncate, can_reference, can_trigger)
   LOOP
-    FOREACH v_role_name IN ARRAY ARRAY['carbon_ledger_app','carbon_ledger_runtime']
+    FOREACH v_role_name IN ARRAY ARRAY['carbon_ledger_app']
     LOOP
       IF has_table_privilege(v_role_name, 'public.' || v_privilege.table_name, 'SELECT') IS DISTINCT FROM v_privilege.can_select OR
          has_table_privilege(v_role_name, 'public.' || v_privilege.table_name, 'INSERT') IS DISTINCT FROM v_privilege.can_insert OR
