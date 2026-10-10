@@ -78,12 +78,13 @@ function asApplicationRolePool(pool: Pool): PgPool {
 
 test("real PostgreSQL integration prerequisites are explicit", { skip: !enabled }, () => {
   assert.match(psql("select version()"), /^PostgreSQL /);
-  psql("drop schema public cascade; create schema public; grant all on schema public to public;");
+  psql("drop schema public cascade; create schema public; grant usage on schema public to public; revoke create on schema public from public;");
   psql(POSTGRES_SCHEMA);
   psql(`do $$ begin if not exists (select from pg_roles where rolname = 'carbon_ledger_app') then create role carbon_ledger_app nologin nosuperuser nobypassrls; end if; end $$;`);
   psql("grant usage on schema public to carbon_ledger_app; grant select, insert on carbon_ledger_events, carbon_ledger_audit to carbon_ledger_app; grant select, insert, update on carbon_ledger_tenant_heads to carbon_ledger_app;");
   assert.equal(psql("select rolsuper || ':' || rolbypassrls from pg_roles where rolname='carbon_ledger_app'"), "false:false");
-  assert.notEqual(psql("select pg_get_userbyid(relowner) from pg_class where relname='carbon_ledger_events'"), "carbon_ledger_app");
+  assert.equal(psql("select count(*) from pg_class where relname in ('carbon_ledger_events','carbon_ledger_audit','carbon_ledger_tenant_heads') and pg_get_userbyid(relowner)='carbon_ledger_app'"), "0", "application role must not own any ledger table");
+  assert.equal(psql("select array_to_string(array[has_table_privilege('carbon_ledger_app','carbon_ledger_events','select'),has_table_privilege('carbon_ledger_app','carbon_ledger_events','insert'),has_table_privilege('carbon_ledger_app','carbon_ledger_events','update'),has_table_privilege('carbon_ledger_app','carbon_ledger_events','delete'),has_table_privilege('carbon_ledger_app','carbon_ledger_audit','select'),has_table_privilege('carbon_ledger_app','carbon_ledger_audit','insert'),has_table_privilege('carbon_ledger_app','carbon_ledger_audit','update'),has_table_privilege('carbon_ledger_app','carbon_ledger_audit','delete'),has_table_privilege('carbon_ledger_app','carbon_ledger_tenant_heads','select'),has_table_privilege('carbon_ledger_app','carbon_ledger_tenant_heads','insert'),has_table_privilege('carbon_ledger_app','carbon_ledger_tenant_heads','update'),has_table_privilege('carbon_ledger_app','carbon_ledger_tenant_heads','delete')],':')"), "true:true:false:false:true:true:false:false:true:true:true:false", "application table privileges must follow least-privilege matrix");
 });
 
 test("RLS filters tenants and fails closed without transaction-local tenant context", { skip: !enabled }, () => {
@@ -98,9 +99,17 @@ test("RLS filters tenants and fails closed without transaction-local tenant cont
   assert.equal(withoutContext.split("\n").filter(line => /^\d+$/.test(line)).at(-1), "0");
 });
 
-test("RLS rejects cross-tenant inserts and append-only trigger rejects mutation", { skip: !enabled }, () => {
+test("RLS rejects cross-tenant inserts and application role cannot mutate ledger events", { skip: !enabled }, () => {
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); insert into carbon_ledger_events(id,tenant_id,actor_id,event_type,sequence,recorded_at,methodology_version,event_hash) values ('55555555-5555-4555-8555-555555555555','${tenantB}','${actor}','entry',2,now(),'test','hash-cross'); rollback;`), /row-level security|policy/i);
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_events set event_hash='tampered' where tenant_id='${tenantA}'; commit;`), /permission denied|append-only|carbon ledger/i);
+});
+
+test("database triggers reject privileged update/delete for all ledger tables", { skip: !enabled }, () => {
+  assert.throws(() => psql("update carbon_ledger_events set event_hash='tampered' where id='33333333-3333-4333-8333-333333333333';"), /append-only|carbon ledger/i);
+  assert.throws(() => psql("delete from carbon_ledger_events where id='33333333-3333-4333-8333-333333333333';"), /append-only|carbon ledger/i);
+  assert.throws(() => psql("update carbon_ledger_audit set action='append' where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';"), /append-only|carbon ledger/i);
+  assert.throws(() => psql("delete from carbon_ledger_audit where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';"), /append-only|carbon ledger/i);
+  assert.throws(() => psql(`delete from carbon_ledger_tenant_heads where tenant_id='${tenantA}';`), /tenant head cannot be deleted/i);
 });
 
 test("tenant-local setting is reset at transaction end on a reused session", { skip: !enabled }, () => {
@@ -138,8 +147,8 @@ test("application role cannot mutate or delete ledger events and audit rows", { 
 
 test("tenant head policy blocks cross-tenant changes and invalid or destructive updates", { skip: !enabled }, () => {
   const before = psql(`select head_event_hash from carbon_ledger_tenant_heads where tenant_id='${tenantB}'`);
-  const crossTenant = psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_tenant_heads set head_event_hash='hash-a' where tenant_id='${tenantB}'; select count(*) from carbon_ledger_tenant_heads where tenant_id='${tenantB}' and head_event_hash is not distinct from '${before}'; commit;`);
-  assert.equal(crossTenant.split("\n").filter(x => /^\d+$/.test(x)).at(-1), "0", "tenant A must not see tenant B head under RLS");
+  psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_tenant_heads set head_event_hash='hash-a' where tenant_id='${tenantB}'; commit;`);
+  assert.equal(psql(`select head_event_hash from carbon_ledger_tenant_heads where tenant_id='${tenantB}'`), before, "cross-tenant update must not change tenant B head");
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_tenant_heads set head_event_hash='not-an-event-hash' where tenant_id='${tenantA}'; commit;`), /must reference an existing tenant event/i);
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_tenant_heads set tenant_id='${tenantB}' where tenant_id='${tenantA}'; commit;`), /tenant_id is immutable/i);
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); delete from carbon_ledger_tenant_heads where tenant_id='${tenantA}'; commit;`), /permission denied|cannot be deleted/i);
