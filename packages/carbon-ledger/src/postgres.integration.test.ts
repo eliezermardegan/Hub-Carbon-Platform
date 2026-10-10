@@ -26,6 +26,10 @@ test("real PostgreSQL integration prerequisites are explicit", { skip: !enabled 
 
 test("RLS filters tenants and fails closed without transaction-local tenant context", { skip: !enabled }, () => {
   psql(`insert into carbon_ledger_events(id,tenant_id,actor_id,event_type,sequence,recorded_at,methodology_version,event_hash) values ('33333333-3333-4333-8333-333333333333','${tenantA}','${actor}','entry',1,now(),'test','hash-a'), ('44444444-4444-4444-8444-444444444444','${tenantB}','${actor}','entry',1,now(),'test','hash-b');`);
+  psql(`insert into carbon_ledger_audit(id,tenant_id,actor_id,action,recorded_at) values ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','${tenantA}','${actor}','verification',now()), ('ffffffff-ffff-4fff-8fff-ffffffffffff','${tenantB}','${actor}','verification',now());`);
+  psql(`insert into carbon_ledger_tenant_heads(tenant_id,head_event_hash) values ('${tenantA}','head-a'), ('${tenantB}','head-b');`);
+  const allTenantCounts = psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); select count(*) from carbon_ledger_events; select count(*) from carbon_ledger_audit; select count(*) from carbon_ledger_tenant_heads; commit;`).split("\n").filter(line => /^\d+$/.test(line));
+  assert.deepEqual(allTenantCounts.slice(-3), ["1", "1", "1"], "RLS must isolate events, audit rows and tenant heads");
   const rows = psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); select count(*) from carbon_ledger_events; commit;`).split("\n").filter(x => x === "1" || x === "0");
   assert.ok(rows.includes("1"), `Expected tenant A to see exactly one row, got: ${rows.join(",")}`);
   const withoutContext = psql("begin; set local role carbon_ledger_app; select count(*) from carbon_ledger_events; commit;");
