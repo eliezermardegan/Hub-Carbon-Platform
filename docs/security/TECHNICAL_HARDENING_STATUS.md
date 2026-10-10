@@ -1,6 +1,6 @@
 # Technical hardening status
 
-Date: 2026-10-09
+Date: 2026-10-10
 Branch: `hardening/ip-supply-chain-governance`
 PR: #21
 
@@ -64,7 +64,7 @@ The ledger stores factor snapshots, methodology version and evidence references.
 
 ## Data intake / integrations
 
-The inspected repository does not provide evidence sufficient to call ERP, procurement, utility, fleet, invoice, OCR or AI integrations operational. These remain implementation/review work and are not described as complete.
+The inspected repository does not provide evidence sufficient to call ERP, procurement, utility, fleet, invoice, OCR or AI integrations operational. These remain implementation/review work and are not described as complete. A follow-up in `packages/data-intake/src/service.ts` now persists unresolved inputs as `not_ready` and non-importable factors as `blocked` before rejecting; regression tests assert no ledger append for those cases. Code commits `40d804d` and `f7ec3f5`; latest CI is pending.
 
 ## Regulatory engine
 
@@ -83,3 +83,12 @@ The existing legal inventory and CI controls are retained. No new third-party ru
 **Not production-ready.** The branch contains meaningful P0 ledger hardening and the specified adapter/database scenarios pass against disposable PostgreSQL 16.15 CI. Independent security review, target-deployment role/RLS verification, repository security administration (issues #22/#23), authentication/authorization deployment evidence, GDPR/data-residency mapping, backup/restore evidence and broader integration/regulatory review remain outstanding.
 
 No merge, deployment, production migration, or production database access is authorized by this work.
+
+
+## Data-intake factor gate follow-up — 2026-10-10
+
+- Finding: the service previously saved activity before resolving factor eligibility, so a blocked factor could leave an activity with a stale `ready` status after rejection.
+- Fix: unresolved/no-factor/missing-quantity paths now persist `not_ready`; blocked-factor path records factor ID/version and `blocked` before throwing; only eligible factors reach calculation and ledger append.
+- Regression coverage: `packages/data-intake/src/service.test.ts` tests that unresolved and blocked paths persist their explicit state and perform zero ledger appends.
+- Commits: `40d804d070aaaf32046a799857b46964ac052aef`, `f7ec3f503d3ab56b1d4182d8840f9b68c1c62862`.
+- Status: implementation committed; latest-head CI pending. Retry/idempotency and persistence-versus-ledger failure recovery remain follow-up design items. This is not evidence of a distributed transaction.
