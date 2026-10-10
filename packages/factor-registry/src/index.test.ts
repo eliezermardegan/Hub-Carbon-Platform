@@ -20,15 +20,27 @@ const factor: EmissionFactor = {
   provenance: {
     sourceName: "Synthetic test source",
     sourceUrl: "https://example.invalid/factor",
+    sourceVersion: "2025-test",
     license: "TEST",
+    legalBasis: "Synthetic test data permission",
     attributionRequired: false,
     redistributionAllowed: true,
-    retrievedAt: "2026-01-01T00:00:00Z"
+    sourceContentSha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    retrievedAt: "2026-01-01T00:00:00Z",
+    geography: "US",
+    originalUnit: "m3",
+    normalizedUnit: "kgCO2e/m3",
+    transformation: "None; value reproduced as published.",
+    evidenceRef: "test://synthetic-factor/2025-test"
   }
 };
 
-test("requires provenance metadata", () => {
+test("requires complete provenance metadata", () => {
   assert.doesNotThrow(() => assertValidFactor(factor));
+  assert.throws(() => assertValidFactor({
+    ...factor,
+    provenance: { ...factor.provenance, sourceContentSha256: "pending" }
+  }), /sourceContentSha256 must be a SHA-256 hex digest/);
 });
 
 test("matches factors by scope, geography and effective date", () => {
@@ -40,10 +52,32 @@ test("matches factors by scope, geography and effective date", () => {
   }).length, 0);
 });
 
+test("only verified factors with valid provenance are importable", () => {
+  assert.equal(factorIsImportable(factor), true);
+  assert.equal(factorIsImportable({ ...factor, status: "draft" }), false);
+  assert.equal(factorIsImportable({ ...factor, status: "deprecated" }), false);
+  assert.equal(factorIsImportable({
+    ...factor,
+    provenance: { ...factor.provenance, sourceContentSha256: "" }
+  }), false);
+});
+
 test("blocks factors whose source does not permit redistribution", () => {
   assert.equal(factorIsImportable(factor), true);
   assert.equal(factorIsImportable({
     ...factor,
     provenance: { ...factor.provenance, redistributionAllowed: false }
   }), false);
+});
+
+test("excludes blocked factors from normal lookups unless explicitly requested for review", () => {
+  const blocked = {
+    ...factor,
+    id: "blocked.factor",
+    status: "blocked" as const,
+    provenance: { ...factor.provenance, redistributionAllowed: false, sourceContentSha256: "" }
+  };
+  assert.equal(findFactors([blocked], { scope: 1 }).length, 0);
+  assert.equal(findFactors([blocked], { scope: 1, status: "blocked" }).length, 1);
+  assert.equal(factorIsImportable(blocked), false);
 });

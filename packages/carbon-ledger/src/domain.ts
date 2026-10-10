@@ -62,6 +62,23 @@ function eventHashFor(event: Omit<DomainEvent, "eventHash">): string {
   return createHash("sha256").update(canonicalize(event), "utf8").digest("hex");
 }
 
+function idempotencyFingerprint(event: DomainEvent): string {
+  const payload = {
+    tenantId: event.tenantId,
+    actorId: event.actorId,
+    eventType: event.eventType,
+    activity: event.activity ?? null,
+    factor: event.factor ?? null,
+    calculation: event.calculation ?? null,
+    evidence: event.evidence,
+    methodologyVersion: event.methodologyVersion,
+    reason: event.reason ?? null,
+    replacesEventId: event.replacesEventId ?? null,
+    idempotencyKey: event.idempotencyKey,
+  };
+  return createHash("sha256").update(canonicalize(payload), "utf8").digest("hex");
+}
+
 
 function requireTenantContext(context: LedgerCommandContext): void {
   if (!context.tenantId || !context.actorId) throw new Error("tenantId and actorId are required");
@@ -182,12 +199,18 @@ export class CarbonLedgerDomain {
   ): Promise<DomainEvent> {
     requireTenantContext(context);
     const existing = await this.idempotency.get(idempotencyKey, context.tenantId);
-    if (existing) return existing;
 
     const events = await this.persistence.listEvents(context.tenantId);
     const latest = events.at(-1);
     const head = { hash: latest?.eventHash ?? null, sequence: latest?.sequence ?? 0 };
     const event = await build(head);
+    if (existing) {
+      if (idempotencyFingerprint(existing) !== idempotencyFingerprint(event)) {
+        throw new Error("idempotency key conflict: payload differs from original operation");
+      }
+      return existing;
+    }
+
     const audit: AuditRecord = {
       id: crypto.randomUUID(),
       tenantId: context.tenantId,
@@ -251,6 +274,12 @@ export class CarbonLedgerDomain {
       recordedAt: new Date().toISOString(), metadata: { checkedEvents: String(checkedEvents), valid: "false", error }
     });
     return { valid: false, checkedEvents, error };
+  }
+
+  async findByIdempotencyKey(tenantId: string, key: string): Promise<DomainEvent | null> {
+    if (!tenantId || !key) throw new Error("tenantId and idempotency key are required");
+    const events = await this.persistence.listEvents(tenantId);
+    return (events.find(event => event.idempotencyKey === key) as DomainEvent | undefined) ?? null;
   }
 
   private async findEvent(tenantId: string, id: string): Promise<DomainEvent | null> {

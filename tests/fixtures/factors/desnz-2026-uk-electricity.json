@@ -1,0 +1,19 @@
+{
+  "id": "uk.gov.desnz.ghg-2026.uk-electricity-generated-including-imports",
+  "sourceName": "Department for Energy Security and Net Zero",
+  "sourceUrl": "https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2026",
+  "sourceArtifactUrl": "https://assets.publishing.service.gov.uk/media/6a6c9748862aaf18d9c62ac9/ghg-conversion-factors-2026-flat-format-revised.xlsx",
+  "sourceVersion": "Greenhouse gas reporting: conversion factors 2026 (updated July 2026 flat file)",
+  "publisher": "Department for Energy Security and Net Zero",
+  "recordId": "7_400_4000_5_1",
+  "name": "UK electricity generated, including imports",
+  "value": 0.13096,
+  "originalUnit": "kgCO2e/kWh",
+  "normalizedUnit": "kgCO2e/kWh",
+  "geography": "United Kingdom",
+  "table": "UK electricity / Factors by Category",
+  "referenceYear": 2025,
+  "license": "Open Government Licence v3.0",
+  "evidenceRef": "DESNZ 2026; Factors by Category sheet, ID 7_400_4000_5_1",
+  "sourceSnapshotSha256": "f542acabc2e263c01372be6e7e1f6436f1b1d0a0ad2142de175ee4d143c395be"
+}

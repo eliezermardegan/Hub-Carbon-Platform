@@ -5,21 +5,38 @@ import type { LedgerPersistence, PersistedLedgerEvent, AuditRecord } from "../..
 import type { EmissionFactor } from "../../factor-registry/src/index.js";
 import * as dataIntakeServiceModule from "../../data-intake/src/service.ts";
 
-const DataIntakeService = ((dataIntakeServiceModule as any).DataIntakeService ?? (dataIntakeServiceModule as any).default?.DataIntakeService ?? (dataIntakeServiceModule as any).default) as any;
-import type { DataIntakePersistence } from "../../data-intake/src/persistence.js";
-import type { ActivityRecord, Evidence, SourceDocument } from "../../data-intake/src/index.js";
+const DataIntakeService = ((dataIntakeServiceModule as any).DataIntakeService ??
+  (dataIntakeServiceModule as any).default?.DataIntakeService ??
+  (dataIntakeServiceModule as any).default) as typeof import("../../data-intake/src/service.js").DataIntakeService;
+
+import type { ActivityRecord } from "../../data-intake/src/index.js";
+import * as dataIntakePersistenceModule from "../../data-intake/src/persistence.ts";
 import { buildCarbonReport, buildCbamReport } from "../../reporting-engine/src/index.js";
 import { createRegulatoryEngine } from "./domain.js";
 
+const persistenceNamespace = dataIntakePersistenceModule as unknown as Record<string, unknown>;
+const persistenceDefault = persistenceNamespace.default;
+const persistenceDefaultRecord = persistenceDefault !== null &&
+  (typeof persistenceDefault === "object" || typeof persistenceDefault === "function")
+  ? persistenceDefault as Record<string, unknown>
+  : undefined;
+const InMemoryDataIntakePersistence = (
+  persistenceNamespace.InMemoryDataIntakePersistence ??
+  persistenceDefaultRecord?.InMemoryDataIntakePersistence
+) as typeof import("../../data-intake/src/persistence.js").InMemoryDataIntakePersistence;
+if (typeof InMemoryDataIntakePersistence !== "function") {
+  throw new Error("Data Intake runtime export 'InMemoryDataIntakePersistence' is unavailable");
+}
+
 const tenantId = "company-eu-cbam-test";
 const periodId = "2026";
-const sourceUrl = "https://taxation-customs.ec.europa.eu/system/files/2023-12/Guidance%20document%20on%20CBAM%20implementation%20for%20installation%20operators%20outside%20the%20EU.pdf";
+const sourceUrl = "test://synthetic-eu-cbam-factor";
 
 const directFactor: EmissionFactor = {
   id: "official-example-eaf-direct",
   version: "test-2026",
   status: "verified",
-  name: "Official EAF worked-example direct embedded emissions",
+  name: "Synthetic EAF worked-example direct embedded emissions",
   scope: 1,
   category: "cbam_embedded_emissions_direct",
   geography: "EU-test",
@@ -28,36 +45,34 @@ const directFactor: EmissionFactor = {
   value: 1.440,
   dataQuality: "high",
   provenance: {
-    sourceName: "European Commission",
-    sourceUrl,
-    sourceDocument: "Guidance document on CBAM implementation for installation operators outside the EU",
-    sourceVersion: "transitional-period worked example, section 7.2.2.2, Table 7-14",
-    license: "Official EU source; normalized test values only; original PDF not redistributed",
-    attributionRequired: true,
-    redistributionAllowed: false,
-    retrievedAt: "2026-10-08"
+    sourceName: "Synthetic test fixture (not official source)",
+    sourceUrl: "test://synthetic-eu-cbam-factor",
+    sourceDocument: "Synthetic test fixture; does not reproduce or attest to official source content",
+    sourceVersion: "synthetic-fixture-v1",
+    license: "test-only",
+    legalBasis: "Synthetic test fixture; no production use or redistribution claim",
+    attributionRequired: false,
+    redistributionAllowed: true,
+    sourceContentSha256: "a11988e6d142d979c940f5fe08d800881243af3975b173c9f620555479c1939c",
+    retrievedAt: "2026-10-08T00:00:00Z",
+    geography: "TEST",
+    originalUnit: "t",
+    normalizedUnit: "tCO2e/t",
+    transformation: "Synthetic test fixture; no official source transformation claimed",
+    evidenceRef: "test://synthetic-eu-cbam-factor/v1"
   }
 };
 
 const indirectFactor: EmissionFactor = {
   ...directFactor,
   id: "official-example-eaf-indirect",
-  name: "Official EAF worked-example indirect embedded emissions",
+  name: "Synthetic EAF worked-example indirect embedded emissions",
   scope: 2,
   category: "cbam_embedded_emissions_indirect",
   value: 1.732
 };
 
-class MemoryIntake implements DataIntakePersistence {
-  activities: ActivityRecord[] = [];
-  documents: SourceDocument[] = [];
-  evidence: Evidence[] = [];
-  async saveActivity(a: ActivityRecord) { this.activities.push(a); }
-  async saveDocument(d: SourceDocument) { this.documents.push(d); }
-  async saveEvidence(e: Evidence) { this.evidence.push(e); }
-  async getActivity() { return null; }
-  async listActivities() { return this.activities; }
-}
+class MemoryIntake extends InMemoryDataIntakePersistence {}
 
 class MemoryLedger implements LedgerPersistence {
   events: PersistedLedgerEvent[] = [];
@@ -76,7 +91,7 @@ test("EU CBAM EAF end-to-end cycle preserves direct + indirect units and totals"
   const intake = new DataIntakeService(
     intakePersistence,
     {
-      resolve: async (activity) =>
+      resolve: async (activity: ActivityRecord) =>
         activity.activityType.endsWith("_indirect") ? indirectFactor : directFactor
     },
     ledger

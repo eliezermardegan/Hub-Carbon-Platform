@@ -1,0 +1,15 @@
+# Global Ownership Rules
+
+# Critical carbon-accounting and provenance paths
+/packages/carbon-core/ @eliezermardegan
+/packages/factor-registry/ @eliezermardegan
+/packages/carbon-ledger/ @eliezermardegan
+/packages/regulatory-engine/ @eliezermardegan
+/factors/ @eliezermardegan
+/legal/ @eliezermardegan
+/.github/workflows/ @eliezermardegan
+/package.json @eliezermardegan
+/package-lock.json @eliezermardegan
+
+# Default ownership
+* @eliezermardegan

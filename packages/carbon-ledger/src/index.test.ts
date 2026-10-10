@@ -19,6 +19,14 @@ const factor: EmissionFactor = {
   provenance: {
     sourceName: "Project test fixture",
     sourceUrl: "https://example.invalid/factor",
+    sourceVersion: "fixture-v1",
+    legalBasis: "Synthetic test fixture",
+    sourceContentSha256: "ba7b10b5afb62f2852574f5969acaa64ba71d4f062ac2224f90f9ec23435fdaa",
+    geography: "TEST",
+    originalUnit: "kWh",
+    normalizedUnit: "kWh",
+    transformation: "No transformation",
+    evidenceRef: "test://fixture/v1",
     license: "internal-fixture",
     attributionRequired: false,
     redistributionAllowed: false,
@@ -64,4 +72,43 @@ test("rejects an activity/factor mismatch", () => {
     () => ledger.append({ ...activity, factorVersion: "wrong" }, factor, [], "pbhg-2026.1"),
     /does not match supplied factor/
   );
+});
+
+
+test("hash verification detects tampered event content", () => {
+  const ledger = new CarbonLedger();
+  ledger.append(activity, factor, [], "pbhg-2026.1", "2026-10-07T12:00:00Z");
+  const internal = ledger as unknown as { entries: Array<{ methodologyVersion: string }> };
+  internal.entries[0].methodologyVersion = "tampered";
+  assert.deepEqual(ledger.verify(), {
+    valid: false,
+    checkedEntries: 0,
+    error: "entry hash mismatch at entry activity-001",
+  });
+});
+
+test("hash verification detects a broken previous-hash link", () => {
+  const ledger = new CarbonLedger();
+  ledger.append(activity, factor, [], "pbhg-2026.1", "2026-10-07T12:00:00Z");
+  ledger.append({ ...activity, id: "activity-002", quantity: 50 }, factor, [], "pbhg-2026.1", "2026-10-07T12:01:00Z");
+  const internal = ledger as unknown as { entries: Array<{ previousEntryHash: string | null }> };
+  internal.entries[1].previousEntryHash = "missing-link";
+  assert.deepEqual(ledger.verify(), {
+    valid: false,
+    checkedEntries: 1,
+    error: "previous hash mismatch at entry activity-002",
+  });
+});
+
+test("hash verification detects a sequence gap", () => {
+  const ledger = new CarbonLedger();
+  ledger.append(activity, factor, [], "pbhg-2026.1", "2026-10-07T12:00:00Z");
+  ledger.append({ ...activity, id: "activity-002", quantity: 50 }, factor, [], "pbhg-2026.1", "2026-10-07T12:01:00Z");
+  const internal = ledger as unknown as { entries: Array<{ sequence: number }> };
+  internal.entries[1].sequence = 3;
+  assert.deepEqual(ledger.verify(), {
+    valid: false,
+    checkedEntries: 1,
+    error: "sequence mismatch at entry activity-002",
+  });
 });

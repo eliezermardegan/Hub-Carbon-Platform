@@ -34,7 +34,7 @@ class MemoryLedgerPersistence implements LedgerPersistence {
   }
 }
 
-test("complete chain: UK factor -> Data Intake -> Carbon Core -> Carbon Ledger -> verification", async () => {
+test("rejects blocked UK factor before calculation or ledger append", async () => {
   const activity: ActivityRecord = {
     activityId: "uk-chain-2026",
     companyId: "tenant-1",
@@ -64,31 +64,12 @@ test("complete chain: UK factor -> Data Intake -> Carbon Core -> Carbon Ledger -
   const ledger = new CarbonLedgerDomain(ledgerPersistence, new InMemoryIdempotencyStore());
   const service = new DataIntakeService(persistence, resolver, ledger);
 
-  const result = await service.ingestActivity(activity, {
+  await assert.rejects(() => service.ingestActivity(activity, {
     tenantId: "tenant-1",
     actorId: "integration-test",
     methodologyVersion: "uk-government-2026",
     now: "2026-10-07T00:00:00Z"
-  });
-
-  assert.equal(result.calculation?.emissionsKgCo2e, 1309.6);
-  assert.equal(result.calculation?.factorId, ukGovernment2026ElectricityFactor.id);
-  assert.equal(result.calculation?.factorVersion, "2026");
-  assert.equal(result.ledgerEvent?.calculation.emissionsKgCo2e, 1309.6);
-  assert.equal(result.ledgerEvent?.factor.id, ukGovernment2026ElectricityFactor.id);
-  assert.equal(result.ledgerEvent?.factor.version, "2026");
-  assert.equal(result.ledgerEvent?.factor.value, 0.13096);
-  assert.equal(result.ledgerEvent?.factor.provenance.license, "Open Government Licence v3.0");
-  assert.equal(result.ledgerEvent?.evidence.length, 1);
-  assert.equal(result.ledgerEvent?.previousEntryHash, null);
-  assert.equal(ledgerPersistence.events.length, 1);
-
-  const stored = await persistence.getActivity("tenant-1", "uk-chain-2026");
-  assert.equal(stored?.calculationStatus, "ready");
-  assert.equal(stored?.factorId, undefined);
-  assert.equal(stored?.factorVersion, undefined);
-
-  const verification = await ledger.verify("tenant-1", "integration-test");
-  assert.deepEqual(verification, { valid: true, checkedEvents: 1 });
-  assert.equal((await ledgerPersistence.listAudit("tenant-1")).at(-1)?.action, "verification");
+  }), /factor is not approved for import or calculation/);
+  assert.equal(ledgerPersistence.events.length, 0);
+  assert.equal(ledgerPersistence.audits.length, 0);
 });

@@ -5,16 +5,24 @@ export type DataQuality = "high" | "medium" | "low" | "unknown";
 export interface FactorProvenance {
   sourceName: string;
   sourceUrl: string;
-  sourceVersion?: string;
+  sourceVersion: string;
   sourcePublicationDate?: string;
   sourceDocument?: string;
   sourceCommit?: string;
   license: string;
+  legalBasis: string;
   licenseUrl?: string;
   attributionRequired: boolean;
   redistributionAllowed: boolean;
-  sourceContentSha256?: string;
+  sourceContentSha256: string;
   retrievedAt: string;
+  effectiveFrom?: string;
+  effectiveTo?: string;
+  geography: string;
+  originalUnit: string;
+  normalizedUnit: string;
+  transformation: string;
+  evidenceRef: string;
 }
 
 export interface EmissionFactor {
@@ -63,7 +71,23 @@ export function validateFactor(factor: EmissionFactor): string[] {
   if (!factor.provenance.sourceName.trim()) errors.push("provenance.sourceName is required");
   if (!factor.provenance.sourceUrl.trim()) errors.push("provenance.sourceUrl is required");
   if (!factor.provenance.license.trim()) errors.push("provenance.license is required");
+  if (!factor.provenance.legalBasis.trim()) errors.push("provenance.legalBasis is required");
+  if (!factor.provenance.sourceVersion.trim()) errors.push("provenance.sourceVersion is required");
+  if (factor.status !== "blocked") {
+    if (!factor.provenance.sourceContentSha256.trim()) errors.push("provenance.sourceContentSha256 is required");
+    if (!/^[a-f0-9]{64}$/i.test(factor.provenance.sourceContentSha256)) errors.push("provenance.sourceContentSha256 must be a SHA-256 hex digest");
+  } else if (factor.provenance.sourceContentSha256 && !/^[a-f0-9]{64}$/i.test(factor.provenance.sourceContentSha256)) {
+    errors.push("provenance.sourceContentSha256 must be empty or a SHA-256 hex digest for blocked factors");
+  }
   if (!factor.provenance.retrievedAt.trim()) errors.push("provenance.retrievedAt is required");
+  if (!factor.provenance.geography.trim()) errors.push("provenance.geography is required");
+  if (!factor.provenance.originalUnit.trim()) errors.push("provenance.originalUnit is required");
+  if (!factor.provenance.normalizedUnit.trim()) errors.push("provenance.normalizedUnit is required");
+  if (!factor.provenance.transformation.trim()) errors.push("provenance.transformation is required");
+  if (!factor.provenance.evidenceRef.trim()) errors.push("provenance.evidenceRef is required");
+  if (factor.status === "verified" && !factor.provenance.redistributionAllowed) {
+    errors.push("verified factors must permit redistribution");
+  }
   if (factor.provenance.redistributionAllowed && !factor.provenance.license) {
     errors.push("redistributable factors require a license");
   }
@@ -76,6 +100,8 @@ export function assertValidFactor(factor: EmissionFactor): void {
 }
 
 export function factorMatches(factor: EmissionFactor, query: FactorQuery): boolean {
+  // Blocked entries remain inspectable only through an explicit review query.
+  if (factor.status === "blocked" && query.status !== "blocked") return false;
   if (query.category && factor.category !== query.category) return false;
   if (query.scope && factor.scope !== query.scope) return false;
   if (query.geography && factor.geography !== query.geography) return false;
@@ -90,5 +116,5 @@ export function findFactors(factors: readonly EmissionFactor[], query: FactorQue
 }
 
 export function factorIsImportable(factor: EmissionFactor): boolean {
-  return factor.status !== "blocked" && factor.provenance.redistributionAllowed;
+  return factor.status === "verified" && factor.provenance.redistributionAllowed && validateFactor(factor).length === 0;
 }

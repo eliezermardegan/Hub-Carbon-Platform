@@ -1,0 +1,48 @@
+name: bootstrap-lockfile
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [hardening/ip-supply-chain-governance]
+    paths:
+      - package.json
+      - .github/workflows/bootstrap-lockfile.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.20.0
+          cache: npm
+      - name: Pin npm
+        run: npm install --global npm@10.9.3
+      - name: Generate lockfile reproducibly
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+      - name: Publish generated lockfile for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-package-lock
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Commit generated lockfile
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "package-lock.json is already current"
+          else
+            git commit -m "build: commit reproducible npm lockfile"
+            git push
+          fi

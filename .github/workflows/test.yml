@@ -8,11 +8,34 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: carbon_ledger_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d carbon_ledger_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PG_INTEGRATION_URL: postgres://postgres:postgres@localhost:5432/carbon_ledger_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run typecheck:tests
       - run: npm test
+      - name: Verify PostgreSQL tenant privileges and RLS in disposable CI database
+        if: success()
+        env:
+          HUB_CARBON_POSTGRES_SECURITY_AUDIT_CI: "true"
+        run: node scripts/verify-postgres-tenant-security.mjs
