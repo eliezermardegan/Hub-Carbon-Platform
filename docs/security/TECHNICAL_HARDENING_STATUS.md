@@ -30,7 +30,7 @@ PR: #21
 | Concurrent sequence allocation | Implemented + integration tested | CI #178 exercises competing concurrent appends and checks tenant sequence/head consistency in PostgreSQL 16.15; this is a bounded race test, not a sustained load/soak benchmark. |
 | Hash-chain verification | Existing implementation + tests | `packages/carbon-ledger/src/domain.ts` and ledger tests. |
 | Hash-chain as tamper-proof storage | Correctly not claimed | Architecture documentation explicitly limits the claim. |
-| Real PostgreSQL integration suite | TESTED — EVIDENCE RECORDED on latest candidate; independent review pending | Test CI #248 on SHA 86f98d6f280b6bb83c5cb332c6a3a502d90a86a0 passed on PostgreSQL 16.15: 100 passed, 0 failed, 0 skipped. Canonical Data Intake schema setup, role/grant assertions, RLS, bounded concurrency, idempotency and true OS process-boundary recovery and stale fencing-token rejection passed in Test CI #250. Issue #28 technical acceptance criteria met. |
+| Real PostgreSQL integration suite | TESTED — EVIDENCE RECORDED on latest candidate; independent review pending | Test CI #248 on SHA 86f98d6f280b6bb83c5cb332c6a3a502d90a86a0 passed on PostgreSQL 16.15: 100 passed, 0 failed, 0 skipped. Canonical Data Intake schema setup, role/grant assertions, RLS, bounded concurrency, idempotency and true OS process-boundary recovery and stale fencing-token rejection passed in Test CI #250. Issue #28 technical acceptance criteria met on SHA `7168f513a203dc78d742cf42c70cb4e3fcaca6c9`, including rejection of a token-bound write after expiry even before lease reclaim. |
 
 ## Required P0 integration scenarios
 
@@ -113,7 +113,7 @@ These checks cover the code head, not this subsequent documentation refresh. Dur
 
 ## Durable PostgreSQL Data Intake follow-up — validation passed, process-boundary recovery open (2026-10-10)
 
-Latest implementation SHA: 4d5659f36b9d6702cd2381484fef474bf8635438
+Latest implementation SHA: 7168f513a203dc78d742cf42c70cb4e3fcaca6c9
 Status: **TESTED — EVIDENCE RECORDED** for the current PostgreSQL integration suite; independent review pending.
 
 - [Test CI #248](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395157): **100 passed, 0 failed, 0 skipped**. npm ci, normal typecheck, typecheck:tests and npm test all passed under Node.js 22 against disposable PostgreSQL 16.15.
@@ -141,3 +141,13 @@ Latest implementation SHA: `86f98d6f280b6bb83c5cb332c6a3a502d90a86a0`.
 - No RLS, least-privilege, idempotency, calculation, factor-gating or provenance assertion was weakened.
 
 Issue #28's technical acceptance criteria are now met for this test environment and can be closed as completed. Independent security review, target-environment verification, privacy/legal assessment and production readiness remain separate open gates. This test does not constitute a sustained load/soak campaign or production authorisation.
+
+
+## Lease-expiry fencing invariant — verified 2026-10-10
+
+Implementation SHA: `7168f513a203dc78d742cf42c70cb4e3fcaca6c9`.
+- [Test CI #252](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38069001785): **101 passed, 0 failed, 0 skipped**; normal typecheck, test-inclusive typecheck and full npm test passed on Node.js 22 / PostgreSQL 16.15.
+- [Supply Chain Security #172](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38069001788): PASS on the same SHA.
+- [Factor Provenance Gate #167](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38069001787): PASS on the same SHA.
+- Recovery uses two independent OS processes; a separate assertion now rejects writes from an expired owner before a new claimant takes over, then verifies reclaim and stale-token rejection.
+- This remains a bounded integration test, not a sustained load/soak or production deployment proof. Independent review, target environment and legal/privacy gates remain open.

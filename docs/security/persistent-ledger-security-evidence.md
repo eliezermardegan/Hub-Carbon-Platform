@@ -18,7 +18,7 @@ The latest candidate SHA 86f98d6f280b6bb83c5cb332c6a3a502d90a86a0 passed all thr
 - [Supply Chain Security #168](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395164): PASS.
 - [Factor Provenance Gate #163](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395111): PASS.
 
-This supersedes prior failure-status notes for the Data Intake SQL bootstrap and ESM fixes. Historical run records below remain immutable and valid only for their pinned commits. The passing suite includes RLS/role grants, append-only controls, bounded concurrent append and the Data Intake recovery test after reinitialising pools/adapters in a single process. True process-boundary recovery and stale fencing-token rejection passed in Test CI #250; Issue #28 technical acceptance criteria met. Independent review, target deployment verification and legal/privacy/release gates remain pending.
+This supersedes prior failure-status notes for the Data Intake SQL bootstrap and ESM fixes. Historical run records below remain immutable and valid only for their pinned commits. The passing suite includes RLS/role grants, append-only controls, bounded concurrent append and the Data Intake recovery test after reinitialising pools/adapters in a single process. True process-boundary recovery, expired-lease owner write rejection before reclaim, and stale fencing-token rejection passed in Test CI #252; Issue #28 technical acceptance criteria met. Independent review, target deployment verification and legal/privacy/release gates remain pending.
 
 ## 2. Traceability identifiers
 
@@ -102,3 +102,13 @@ Latest implementation SHA: `86f98d6f280b6bb83c5cb332c6a3a502d90a86a0`.
 - No RLS, least-privilege, idempotency, calculation, factor-gating or provenance assertion was weakened.
 
 Issue #28's technical acceptance criteria are now met for this test environment and can be closed as completed. Independent security review, target-environment verification, privacy/legal assessment and production readiness remain separate open gates. This test does not constitute a sustained load/soak campaign or production authorisation.
+
+
+## Lease-expiry fencing invariant — verified 2026-10-10
+
+Implementation SHA: `7168f513a203dc78d742cf42c70cb4e3fcaca6c9`.
+- [Test CI #252](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38069001785): **101 passed, 0 failed, 0 skipped**; normal typecheck, test-inclusive typecheck and full npm test passed on Node.js 22 / PostgreSQL 16.15.
+- [Supply Chain Security #172](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38069001788): PASS on the same SHA.
+- [Factor Provenance Gate #167](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38069001787): PASS on the same SHA.
+- Recovery uses two independent OS processes; a separate assertion now rejects writes from an expired owner before a new claimant takes over, then verifies reclaim and stale-token rejection.
+- This remains a bounded integration test, not a sustained load/soak or production deployment proof. Independent review, target environment and legal/privacy gates remain open.

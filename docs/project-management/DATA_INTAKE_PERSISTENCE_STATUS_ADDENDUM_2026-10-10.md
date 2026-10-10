@@ -31,7 +31,7 @@ The durable PostgreSQL Data Intake implementation is **TESTED — EVIDENCE RECOR
 | [Supply Chain Security #168](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395164) | PASS | Supply-chain workflow on the exact same SHA. |
 | [Factor Provenance Gate #163](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395111) | PASS | Provenance gate on the exact same SHA. |
 
-All three workflows ran against exactly 4d5659f36b9d6702cd2381484fef474bf8635438. The test log reports 100 tests, 100 passed, 0 failed, 0 skipped; test #46 (“Data Intake recovers the committed PostgreSQL ledger event after intake save failure and service restart”) passed.
+All three workflows ran against exactly 7168f513a203dc78d742cf42c70cb4e3fcaca6c9. The test log reports 100 tests, 100 passed, 0 failed, 0 skipped; test #46 (“Data Intake recovers the committed PostgreSQL ledger event after intake save failure and service restart”) passed.
 
 ## 4. Root causes and corrections
 
@@ -51,7 +51,7 @@ The CBAM test could not statically link the named InMemoryDataIntakePersistence 
 
 Issue #28 remains open until a test kills/relaunches the process or delegates retry to a freshly started independent worker. It must commit the ledger event, inject failure at final intake persistence, establish durable failure state, restart across a real process boundary, retry the same tenant/key/request/actor/methodology, and verify one event only with identical event ID/hash and preserved factor snapshot. Add expired-lease and stale-fencing-token races, and conflict cases for payload/identity.
 
-Test CI #250 now satisfies this criterion with separate OS processes and verifies lease expiry plus stale fencing-token rejection. This does not constitute sustained load/soak or production-scale multi-process stress testing. The bounded concurrency test is not a sustained load/soak/throughput or multi-process stress campaign.
+Test CI #250 now satisfies this criterion with separate OS processes and verifies expired-owner write rejection before reclaim, lease expiry plus stale fencing-token rejection. This does not constitute sustained load/soak or production-scale multi-process stress testing. The bounded concurrency test is not a sustained load/soak/throughput or multi-process stress campaign.
 
 ## 6. Legal, calculation integrity and release boundaries
 
@@ -76,3 +76,13 @@ Latest implementation SHA: `86f98d6f280b6bb83c5cb332c6a3a502d90a86a0`.
 - No RLS, least-privilege, idempotency, calculation, factor-gating or provenance assertion was weakened.
 
 Issue #28's technical acceptance criteria are now met for this test environment and can be closed as completed. Independent security review, target-environment verification, privacy/legal assessment and production readiness remain separate open gates. This test does not constitute a sustained load/soak campaign or production authorisation.
+
+
+## Lease-expiry fencing invariant — verified 2026-10-10
+
+Implementation SHA: `7168f513a203dc78d742cf42c70cb4e3fcaca6c9`.
+- [Test CI #252](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38069001785): **101 passed, 0 failed, 0 skipped**; normal typecheck, test-inclusive typecheck and full npm test passed on Node.js 22 / PostgreSQL 16.15.
+- [Supply Chain Security #172](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38069001788): PASS on the same SHA.
+- [Factor Provenance Gate #167](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38069001787): PASS on the same SHA.
+- Recovery uses two independent OS processes; a separate assertion now rejects writes from an expired owner before a new claimant takes over, then verifies reclaim and stale-token rejection.
+- This remains a bounded integration test, not a sustained load/soak or production deployment proof. Independent review, target environment and legal/privacy gates remain open.
