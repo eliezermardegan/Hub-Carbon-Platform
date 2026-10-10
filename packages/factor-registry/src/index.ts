@@ -116,5 +116,5 @@ export function findFactors(factors: readonly EmissionFactor[], query: FactorQue
 }
 
 export function factorIsImportable(factor: EmissionFactor): boolean {
-  return factor.status !== "blocked" && factor.provenance.redistributionAllowed;
+  return factor.status === "verified" && factor.provenance.redistributionAllowed && validateFactor(factor).length === 0;
 }
