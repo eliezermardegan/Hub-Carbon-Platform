@@ -10,7 +10,7 @@ const DataIntakeService = ((dataIntakeServiceModule as any).DataIntakeService ??
   (dataIntakeServiceModule as any).default) as typeof import("../../data-intake/src/service.js").DataIntakeService;
 
 import type { ActivityRecord } from "../../data-intake/src/index.js";
-import { InMemoryDataIntakePersistence } from "../../data-intake/src/persistence.js";
+import { InMemoryDataIntakePersistence } from "../../data-intake/src/persistence.ts";
 import { buildCarbonReport, buildCbamReport } from "../../reporting-engine/src/index.js";
 import { createRegulatoryEngine } from "./domain.js";
 
