@@ -8,7 +8,7 @@
 **Working branch:** `hardening/ip-supply-chain-governance`  
 **Pull request:** [#21 — chore: add IP, provenance and supply-chain governance](https://github.com/eliezermardegan/Hub-Carbon-Platform/pull/21)  
 **PR state at last review:** Open, draft, unmerged  
-**Head recorded at last review:** `21b9e8d0f7a6ce2bc41ad6da34308ddf671babf5`  
+**Repository HEAD observed before this tracker metadata update:** `7fbfa80d0e70938cdd5731b9ca8ffcaaabdbffc2`  
 **Production changes authorised:** No  
 **Independent validation completed:** No
 
@@ -540,6 +540,7 @@ The existing CCCA alignment above captures the report's main strategic recommend
 | 2026-10-10 | Added a repository/documentation fit-gap assessment of Novisto's enterprise carbon accounting guide, 12 proposed capability items, safeguards, crosswalk to CCCA tasks and source/evidence limitations. Updated recorded branch head. | https://novisto.com/resources/carbon-accounting-guide; repository files listed in section 18; commit to be recorded after this change | Project implementation session — independent review not yet performed |
 | 2026-10-10 | Expanded the detailed CCCA report fit-gap with six operational addenda covering data ownership, collection cadence, cleaning/quarantine, quality dimensions, transformation controls and auditable trend/report review. | CCCA report printed pp. 47–69 and 88–91; section 19 of this tracker | Project implementation session — independent review not yet performed |
 | 2026-10-10 | Added fit-gap analysis of the user-provided KPMG GHG reporting handbook and King's College London carbon-accounting methodology; created ten GHGR addenda for category methodology, exclusions, GWP, restatements, factor-vintage alignment, uncertainty, offsets, report profiles, inventory principles and Scope 2 evidence. | User-provided handbook-ghg-emissions-reporting.pdf and carbon-accounting-methodology.pdf; section 20 of this tracker | Project implementation session — independent review not yet performed |
+| 2026-10-10 | Synchronized tracker metadata with the observed repository HEAD; no task status, priority, acceptance criterion or execution order changed. P0 remains open pending real-PostgreSQL evidence; GHGR-01–GHGR-10 remain NOT STARTED. | Pre-update HEAD: `7fbfa80d0e70938cdd5731b9ca8ffcaaabdbffc2`; tracker metadata-only update | Project implementation session — independent review not yet performed |
 | YYYY-MM-DD | Describe the code/documentation change, status transition, test evidence and blocker/closure. | Commit SHA / CI run / evidence link | Name |
 
 ## 22. How this document must be maintained
