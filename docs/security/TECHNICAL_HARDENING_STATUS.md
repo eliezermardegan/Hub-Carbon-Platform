@@ -18,23 +18,23 @@ PR: #21
 |---|---|---|
 | Trusted server-side tenant context | Implemented | `packages/carbon-ledger/src/postgres.ts` requires `TrustedTenantContextProvider`. |
 | Transaction-local tenant context | Implemented | Same adapter sets and verifies tenant context after `BEGIN` on the leased connection. |
-| Pooled-connection isolation | Implemented by design | Tenant state is transaction-local; no session tenant state is retained. Real DB test still required. |
+| Pooled-connection isolation | Implemented by design | Tenant state is transaction-local; no session tenant state is retained. CI #178 tests a single-connection pool alternating trusted tenant contexts; target deployment configuration still needs environment-specific verification. |
 | Fail-closed tenant mismatch | Implemented + unit tested | Tenant arguments are checked against trusted context. |
 | RLS + FORCE RLS | Implemented in schema | `packages/carbon-ledger/src/persistence.ts`. |
-| Application role cannot bypass RLS | Documented requirement; environment verification pending | Deployment role ownership/BYPASSRLS must be checked in the target database. |
+| Application role cannot bypass RLS | Verified in disposable CI schema; deployment verification pending | CI #173 and #178 assert non-superuser, NOBYPASSRLS, non-ownership, and effective grants; repeat against the actual deployment role/schema before production. |
 | Atomic append/head/audit transaction | Implemented | PostgreSQL adapter performs all writes in one transaction with rollback on failure. |
 | Append-only historical events | Implemented in schema | Database triggers reject update/delete. |
 | Idempotency equivalent payload | Implemented | Canonical semantic payload hash is stored and compared. |
 | Idempotency conflicting payload | Implemented | Conflicting reuse is rejected. |
 | PostgreSQL bigint handling | Implemented | Adapter uses `BigInt` and safe-integer bounds. |
-| Concurrent sequence allocation | Implemented by design | Tenant head row is locked before sequence allocation. Real DB concurrency test still required. |
+| Concurrent sequence allocation | Implemented + integration tested | CI #178 exercises competing concurrent appends and checks tenant sequence/head consistency in PostgreSQL 16.15; this is a bounded race test, not a sustained load/soak benchmark. |
 | Hash-chain verification | Existing implementation + tests | `packages/carbon-ledger/src/domain.ts` and ledger tests. |
 | Hash-chain as tamper-proof storage | Correctly not claimed | Architecture documentation explicitly limits the claim. |
-| Real PostgreSQL integration suite | **Blocked** | No PostgreSQL server/client and no network access are available in the current execution environment. |
+| Real PostgreSQL integration suite | **TESTED — EVIDENCE RECORDED** | CI #178 on exact head `502fe9dfd6dafb04f4850d1bd36795c45cf96462` passed `npm ci`, `npm run typecheck`, and `npm test` against disposable PostgreSQL 16.15: 83 passed, 0 failed, 0 skipped. |
 
 ## Required P0 integration scenarios
 
-Not yet executed. The branch must not claim P0 completion until a disposable PostgreSQL environment runs all required scenarios: cross-tenant read/write isolation, missing/invalid tenant context, pooled-connection leakage, concurrent append, atomic rollback, equivalent/conflicting idempotency, inconsistent audit references, RLS bypass resistance, hash-chain tamper detection, and large-sequence handling.
+The required adapter/database scenarios are exercised in disposable PostgreSQL CI (CI #173 and revalidated on synchronized head in CI #178): cross-tenant read/write isolation, missing/invalid tenant context, pooled-connection reuse, concurrent append/head consistency, atomic rollback, equivalent/conflicting idempotency, inconsistent audit references, effective role grants/RLS, hash-chain tamper detection, and large-sequence handling. This closes the test-execution gap, not the overall P0/release gate: independent security review and target-environment checks remain pending. Concurrency evidence is a bounded race test, not a sustained load/soak benchmark.
 
 ## Security baseline
 
@@ -80,6 +80,6 @@ The existing legal inventory and CI controls are retained. No new third-party ru
 
 ## Deployment readiness
 
-**Not production-ready.** The branch contains meaningful P0 ledger hardening, but real PostgreSQL integration tests, target-database role verification, repository security administration, authentication/authorization deployment evidence, GDPR/data-residency mapping, backup/restore evidence and broader integration/regulatory review remain outstanding.
+**Not production-ready.** The branch contains meaningful P0 ledger hardening and the specified adapter/database scenarios pass against disposable PostgreSQL 16.15 CI. Independent security review, target-deployment role/RLS verification, repository security administration (issues #22/#23), authentication/authorization deployment evidence, GDPR/data-residency mapping, backup/restore evidence and broader integration/regulatory review remain outstanding.
 
 No merge, deployment, production migration, or production database access is authorized by this work.
