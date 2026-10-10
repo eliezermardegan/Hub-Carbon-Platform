@@ -3,8 +3,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const databaseUrl = process.env.PG_INTEGRATION_URL;
-if (process.env.CI !== "true") {
-  console.error("Refusing to run the mutating role bootstrap outside CI.");
+if (process.env.HUB_CARBON_POSTGRES_SECURITY_AUDIT_CI !== "true") {
+  console.error("Refusing to run the mutating role bootstrap unless the dedicated disposable-CI guard is enabled.");
   process.exit(2);
 }
 if (!databaseUrl) {
@@ -71,18 +71,7 @@ REVOKE ALL PRIVILEGES ON SCHEMA public FROM carbon_ledger_app, carbon_ledger_run
 GRANT USAGE ON SCHEMA public TO carbon_ledger_app, carbon_ledger_runtime;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC, carbon_ledger_app, carbon_ledger_runtime;
 
-DO $membership$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM pg_auth_members
-    WHERE roleid = (SELECT oid FROM pg_roles WHERE rolname = 'carbon_ledger_app')
-      AND member = (SELECT oid FROM pg_roles WHERE rolname = 'carbon_ledger_runtime')
-  ) THEN
-    REVOKE carbon_ledger_app FROM carbon_ledger_runtime;
-  END IF;
-END
-$membership$;
-
+REVOKE carbon_ledger_app FROM carbon_ledger_runtime;
 GRANT carbon_ledger_app TO carbon_ledger_runtime WITH INHERIT FALSE, SET TRUE, ADMIN FALSE;
 GRANT SELECT, INSERT ON carbon_ledger_events, carbon_ledger_audit TO carbon_ledger_app;
 GRANT SELECT, INSERT, UPDATE ON carbon_ledger_tenant_heads TO carbon_ledger_app;
