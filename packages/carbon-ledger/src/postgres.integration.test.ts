@@ -130,20 +130,20 @@ test("RLS filters tenants and fails closed without transaction-local tenant cont
 test("Data Intake RLS isolates durable records and activity claims and rejects cross-tenant writes", { skip: !enabled }, async () => {
   const activityA = "acacacac-acac-4cac-8cac-acacacacacac";
   const activityB = "bcbcbcbc-bcbc-4bcb-8bcb-bcbcbcbcbcbc";
-  psql(\`insert into data_intake_records (tenant_id,entity_type,entity_id,company_id,payload) values
-    ('\${tenantA}','company','rls-intake-company-a','\${tenantA}',jsonb_build_object('companyId','\${tenantA}')),
-    ('\${tenantB}','company','rls-intake-company-b','\${tenantB}',jsonb_build_object('companyId','\${tenantB}'));
+  psql(`insert into data_intake_records (tenant_id,entity_type,entity_id,company_id,payload) values
+    ('${tenantA}','company','rls-intake-company-a','${tenantA}',jsonb_build_object('companyId','${tenantA}')),
+    ('${tenantB}','company','rls-intake-company-b','${tenantB}',jsonb_build_object('companyId','${tenantB}'));
     insert into data_intake_activities (tenant_id,company_id,activity_id,reporting_period_id,idempotency_key,payload_hash,status,payload) values
-    ('\${tenantA}','\${tenantA}','\${activityA}','2026','rls-intake-key-a','hash-a','not_ready',jsonb_build_object('activityId','\${activityA}','companyId','\${tenantA}')),
-    ('\${tenantB}','\${tenantB}','\${activityB}','2026','rls-intake-key-b','hash-b','not_ready',jsonb_build_object('activityId','\${activityB}','companyId','\${tenantB}'));\`);
-  const tenantAReads = psql(\`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','\${tenantA}',true); select count(*) from data_intake_records; select count(*) from data_intake_activities; commit;\`)
+    ('${tenantA}','${tenantA}','${activityA}','2026','rls-intake-key-a','hash-a','not_ready',jsonb_build_object('activityId','${activityA}','companyId','${tenantA}')),
+    ('${tenantB}','${tenantB}','${activityB}','2026','rls-intake-key-b','hash-b','not_ready',jsonb_build_object('activityId','${activityB}','companyId','${tenantB}'));`);
+  const tenantAReads = psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); select count(*) from data_intake_records; select count(*) from data_intake_activities; commit;`)
     .split("\\n").filter(line => /^\\d+$/.test(line));
   assert.deepEqual(tenantAReads.slice(-2), ["1","1"], "tenant A must see only its own record and activity");
   const noContextReads = psql("begin; set local role carbon_ledger_app; select count(*) from data_intake_records; select count(*) from data_intake_activities; commit;")
     .split("\\n").filter(line => /^\\d+$/.test(line));
   assert.deepEqual(noContextReads.slice(-2), ["0","0"], "missing tenant context must fail closed for Data Intake tables");
-  assert.throws(() => psql(\`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','\${tenantA}',true); insert into data_intake_records (tenant_id,entity_type,entity_id,company_id,payload) values ('\${tenantB}','company','rls-intake-cross-write','\${tenantB}','{}'::jsonb); commit;\`), /row-level security|policy/i);
-  assert.throws(() => psql(\`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','\${tenantA}',true); insert into data_intake_activities (tenant_id,company_id,activity_id,reporting_period_id,idempotency_key,payload_hash,status,payload) values ('\${tenantB}','\${tenantB}','dededede-dede-4ede-8ede-dededededede','2026','rls-intake-cross-key','hash-cross','not_ready','{}'::jsonb); commit;\`), /row-level security|policy/i);
+  assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); insert into data_intake_records (tenant_id,entity_type,entity_id,company_id,payload) values ('${tenantB}','company','rls-intake-cross-write','${tenantB}','{}'::jsonb); commit;`), /row-level security|policy/i);
+  assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); insert into data_intake_activities (tenant_id,company_id,activity_id,reporting_period_id,idempotency_key,payload_hash,status,payload) values ('${tenantB}','${tenantB}','dededede-dede-4ede-8ede-dededededede','2026','rls-intake-cross-key','hash-cross','not_ready','{}'::jsonb); commit;`), /row-level security|policy/i);
 
   const pool = new Pool({ connectionString: databaseUrl, max: 2 });
   try {
