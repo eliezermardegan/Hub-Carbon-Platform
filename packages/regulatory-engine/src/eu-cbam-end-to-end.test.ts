@@ -6,7 +6,7 @@ import type { EmissionFactor } from "../../factor-registry/src/index.js";
 import * as dataIntakeServiceModule from "../../data-intake/src/service.ts";
 
 const DataIntakeService = ((dataIntakeServiceModule as any).DataIntakeService ?? (dataIntakeServiceModule as any).default?.DataIntakeService ?? (dataIntakeServiceModule as any).default) as any;
-import { InMemoryDataIntakePersistence } from "../../data-intake/src/persistence.ts";
+
 import type { ActivityRecord, Evidence, SourceDocument } from "../../data-intake/src/index.js";
 import { buildCarbonReport, buildCbamReport } from "../../reporting-engine/src/index.js";
 import { createRegulatoryEngine } from "./domain.js";
@@ -55,11 +55,13 @@ const indirectFactor: EmissionFactor = {
   value: 1.732
 };
 
-class MemoryIntake extends InMemoryDataIntakePersistence {
+class MemoryIntake {
   activities: ActivityRecord[] = [];
   documents: SourceDocument[] = [];
   evidence: Evidence[] = [];
-  async saveActivity(a: ActivityRecord) { this.activities.push(a); return super.saveActivity(a); }
+  async claimActivity(a: ActivityRecord, _payloadHash: string) { return { kind: "claimed" as const, activity: structuredClone(a) }; }
+  async releaseActivityClaim(_companyId: string, _key: string) {}
+  async saveActivity(a: ActivityRecord) { this.activities.push(a); return null; }
   async saveDocument(d: SourceDocument) { this.documents.push(d); return super.saveDocument(d); }
   async saveEvidence(e: Evidence) { this.evidence.push(e); return super.saveEvidence(e); }
 }
