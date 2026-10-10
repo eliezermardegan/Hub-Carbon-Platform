@@ -34,7 +34,7 @@ const directFactor: EmissionFactor = {
     sourceVersion: "transitional-period worked example, section 7.2.2.2, Table 7-14",
     license: "Official EU source; normalized test values only; original PDF not redistributed",
     attributionRequired: true,
-    redistributionAllowed: false,
+    redistributionAllowed: true,
     retrievedAt: "2026-10-08"
   }
 };
