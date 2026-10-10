@@ -19,6 +19,7 @@ export interface DataIntakePersistence {
   getDocument(c: string, d: string): Promise<SourceDocument | null>;
   saveEvidence(v: Evidence): Promise<void>;
   claimActivity(v: ActivityRecord, payloadHash: string): Promise<IntakeClaim>;
+  releaseActivityClaim(companyId: string, idempotencyKey: string): Promise<void>;
   saveActivity(v: ActivityRecord): Promise<ActivityRecord | null>;
   getActivity(c: string, id: string): Promise<ActivityRecord | null>;
   listActivities(c: string, p: string): Promise<ActivityRecord[]>;
@@ -84,6 +85,8 @@ export class InMemoryDataIntakePersistence implements DataIntakePersistence {
     this.inFlight.add(key);
     return { kind: "claimed", activity: structuredClone(this.activities.get(v.activityId)!) };
   }
+
+  async releaseActivityClaim(companyId: string, idempotencyKey: string) { this.inFlight.delete(companyId + ":" + idempotencyKey); }
 
   async saveActivity(v: ActivityRecord): Promise<ActivityRecord | null> {
     const key = v.companyId + ":" + v.idempotencyKey;
