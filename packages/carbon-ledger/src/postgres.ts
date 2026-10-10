@@ -121,7 +121,7 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
     return this.withTenantRead(tenantId, async client => (await client.query<EventRow>(`SELECT id, tenant_id as "tenantId", actor_id as "actorId", event_type as "eventType", sequence,
       recorded_at as "recordedAt", activity, factor, calculation, evidence, methodology_version as "methodologyVersion", reason,
       replaces_event_id as "replacesEventId", previous_event_hash as "previousEntryHash", event_hash as "eventHash",
-      idempotency_key as "idempotencyKey", idempotency_payload_hash as "idempotencyPayloadHash" FROM carbon_ledger_events ORDER BY sequence ASC`)).rows.map(mapEvent));
+      idempotency_key as "idempotencyKey", idempotency_payload_hash as "idempotencyPayloadHash" FROM carbon_ledger_events WHERE tenant_id = $1 ORDER BY sequence ASC`, [tenantId])).rows.map(mapEvent));
   }
 
   async listAudit(tenantId: string): Promise<AuditRecord[]> {
@@ -149,6 +149,6 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
   }
 
   async getHead(tenantId: string): Promise<string | null> {
-    return this.withTenantRead(tenantId, async client => (await client.query<HeadRow>("SELECT head_event_hash FROM carbon_ledger_tenant_heads")).rows[0]?.head_event_hash ?? null);
+    return this.withTenantRead(tenantId, async client => (await client.query<HeadRow>("SELECT head_event_hash FROM carbon_ledger_tenant_heads WHERE tenant_id = $1", [tenantId])).rows[0]?.head_event_hash ?? null);
   }
 }
