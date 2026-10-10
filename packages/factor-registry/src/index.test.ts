@@ -52,6 +52,16 @@ test("matches factors by scope, geography and effective date", () => {
   }).length, 0);
 });
 
+test("only verified factors with valid provenance are importable", () => {
+  assert.equal(factorIsImportable(factor), true);
+  assert.equal(factorIsImportable({ ...factor, status: "draft" }), false);
+  assert.equal(factorIsImportable({ ...factor, status: "deprecated" }), false);
+  assert.equal(factorIsImportable({
+    ...factor,
+    provenance: { ...factor.provenance, sourceContentSha256: "" }
+  }), false);
+});
+
 test("blocks factors whose source does not permit redistribution", () => {
   assert.equal(factorIsImportable(factor), true);
   assert.equal(factorIsImportable({
