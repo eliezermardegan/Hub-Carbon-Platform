@@ -10,7 +10,7 @@ test("calculates emissions with the real ADEME Base Carbone factor", () => {
     category: "scope3.category4.upstream_transport_and_distribution",
     quantity: 1000,
     unit: "km",
-    method: "ademe-base-carbone-v23.6",
+    method: "activity_based",
     factorId: ademeV23_6UtilityUnder3_5tFactor.id,
     factorValue: ademeV23_6UtilityUnder3_5tFactor.value,
     factorUnit: ademeV23_6UtilityUnder3_5tFactor.factorUnit,

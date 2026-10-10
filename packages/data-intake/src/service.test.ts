@@ -92,7 +92,7 @@ test("ingests, calculates and sends activity to ledger", async () => {
 test("does not send unresolved data to ledger", async () => {
   const persistence = makePersistence();
   const ledger = idempotentLedger();
-  const service = new DataIntakeService(persistence, { resolve: async () => undefined }, ledger.ledger);
+  const service = new DataIntakeService(persistence, { resolve: async () => null }, ledger.ledger);
   const result = await service.ingestActivity(activity({ dataAvailability: "not_available", calculationStatus: "not_ready" }), context());
   assert.equal(ledger.uniqueWrites(), 0);
   assert.equal(result.handoff.calculationReady, false);

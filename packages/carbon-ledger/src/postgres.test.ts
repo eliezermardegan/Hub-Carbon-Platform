@@ -7,14 +7,14 @@ const actorId = "22222222-2222-4222-8222-222222222222";
 
 function fakePool(queries: string[]): PgPool {
   const client: PgClient & { release(): void } = {
-    async query(text) {
+    async query<T = unknown>(text: string) {
       queries.push(text);
-      if (/current_setting/i.test(text)) return { rows: [{ tenant_id: tenantId }], rowCount: 1 };
-      return { rows: [], rowCount: 0 };
+      if (/current_setting/i.test(text)) return { rows: [{ tenant_id: tenantId } as T], rowCount: 1 };
+      return { rows: [] as T[], rowCount: 0 };
     },
     release() {}
   };
-  return { async query() { return { rows: [], rowCount: 0 }; }, async connect() { return client; } };
+  return { async query<T = unknown>() { return { rows: [] as T[], rowCount: 0 }; }, async connect() { return client; } };
 }
 
 test("tenant query mismatch fails before acquiring a database connection", async () => {

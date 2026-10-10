@@ -23,8 +23,8 @@ const factor: EmissionFactor = {
   id: "electricity-br", version: "2026.1", status: "verified", name: "Test",
   scope: 2, category: "purchased_electricity", geography: "BR", activityUnit: "kWh",
   factorUnit: "kgCO2e/kWh", value: 0.1, dataQuality: "high",
-  provenance: { sourceName: "fixture", sourceUrl: "https://example.invalid", license: "fixture",
-    attributionRequired: false, redistributionAllowed: false, retrievedAt: "2026-10-07T00:00:00Z" }
+  provenance: { sourceName: "fixture", sourceUrl: "https://example.invalid", sourceVersion: "fixture-v1", legalBasis: "Synthetic test fixture", sourceContentSha256: "ba7b10b5afb62f2852574f5969acaa64ba71d4f062ac2224f90f9ec23435fdaa", geography: "TEST", originalUnit: "kWh", normalizedUnit: "kWh", transformation: "No transformation", evidenceRef: "test://fixture/v1",
+    license: "fixture", attributionRequired: false, redistributionAllowed: false, retrievedAt: "2026-10-07T00:00:00Z" }
 };
 const activity = { id:"a1", scope:2 as const, category:"purchased_electricity", quantity:100, unit:"kWh",
   method:"activity_based" as const, factorId:factor.id, factorValue:factor.value, factorUnit:factor.factorUnit, factorVersion:factor.version };

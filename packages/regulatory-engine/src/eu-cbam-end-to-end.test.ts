@@ -3,9 +3,7 @@ import test from "node:test";
 import { CarbonLedgerDomain } from "../../carbon-ledger/src/domain.js";
 import type { LedgerPersistence, PersistedLedgerEvent, AuditRecord } from "../../carbon-ledger/src/persistence.js";
 import type { EmissionFactor } from "../../factor-registry/src/index.js";
-import * as dataIntakeServiceModule from "../../data-intake/src/service.ts";
-
-const DataIntakeService = ((dataIntakeServiceModule as any).DataIntakeService ?? (dataIntakeServiceModule as any).default?.DataIntakeService ?? (dataIntakeServiceModule as any).default) as any;
+import { DataIntakeService } from "../../data-intake/src/service.js";
 
 import type { ActivityRecord, Evidence, SourceDocument } from "../../data-intake/src/index.js";
 import { buildCarbonReport, buildCbamReport } from "../../reporting-engine/src/index.js";
@@ -62,8 +60,8 @@ class MemoryIntake {
   async claimActivity(a: ActivityRecord, _payloadHash: string) { return { kind: "claimed" as const, activity: structuredClone(a) }; }
   async releaseActivityClaim(_companyId: string, _key: string) {}
   async saveActivity(a: ActivityRecord) { this.activities.push(a); return null; }
-  async saveDocument(d: SourceDocument) { this.documents.push(d); return super.saveDocument(d); }
-  async saveEvidence(e: Evidence) { this.evidence.push(e); return super.saveEvidence(e); }
+  async saveDocument(d: SourceDocument) { this.documents.push(d); }
+  async saveEvidence(e: Evidence) { this.evidence.push(e); }
 }
 
 class MemoryLedger implements LedgerPersistence {
@@ -83,7 +81,7 @@ test("EU CBAM EAF end-to-end cycle preserves direct + indirect units and totals"
   const intake = new DataIntakeService(
     intakePersistence,
     {
-      resolve: async (activity) =>
+      resolve: async (activity: ActivityRecord) =>
         activity.activityType.endsWith("_indirect") ? indirectFactor : directFactor
     },
     ledger
