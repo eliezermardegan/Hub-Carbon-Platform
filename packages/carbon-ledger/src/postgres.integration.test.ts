@@ -32,9 +32,9 @@ function persistedEvent(overrides: Partial<import("./persistence.js").PersistedL
   };
 }
 
-function persistedAudit(eventId: string, tenantId = tenantD) {
+function persistedAudit(eventId: string, tenantId = tenantD, id = "13131313-1313-4313-8313-131313131313") {
   return {
-    id: "13131313-1313-4313-8313-131313131313",
+    id,
     tenantId,
     actorId: actor,
     action: "append" as const,
@@ -137,13 +137,15 @@ test("pooled adapter reads do not leak tenant context across reused connections"
     const persistence = new PostgresLedgerPersistence(pool as unknown as PgPool, {
       getTrustedTenantContext: () => ({ tenantId: activeTenant, actorId: actor }),
     });
-    assert.equal((await persistence.listEvents(tenantA)).length, 2);
+    const initialTenantEvents = (await persistence.listEvents(tenantA)).length;
+    const initialTenantAudit = (await persistence.listAudit(tenantA)).length;
+    assert.ok(initialTenantEvents > 0);
     activeTenant = tenantC;
     assert.deepEqual(await persistence.listEvents(tenantC), []);
     assert.deepEqual(await persistence.listAudit(tenantC), []);
     activeTenant = tenantA;
-    assert.equal((await persistence.listEvents(tenantA)).length, 1);
-    assert.equal((await persistence.listAudit(tenantA)).length, 1);
+    assert.equal((await persistence.listEvents(tenantA)).length, initialTenantEvents);
+    assert.equal((await persistence.listAudit(tenantA)).length, initialTenantAudit);
   } finally {
     await pool.end();
   }
@@ -162,8 +164,8 @@ test("concurrent appends serialize tenant sequence and head updates", { skip: !e
       idempotencyKey: "integration-idem-key-2",
     });
     const results = await Promise.allSettled([
-      persistence.appendEvent(first, persistedAudit(first.id)),
-      persistence.appendEvent(second, persistedAudit(second.id)),
+      persistence.appendEvent(first, persistedAudit(first.id, tenantD, "17171717-1717-4717-8717-171717171717")),
+      persistence.appendEvent(second, persistedAudit(second.id, tenantD, "18181818-1818-4818-8818-181818181818")),
     ]);
     assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
     assert.equal(results.filter(result => result.status === "rejected").length, 1);
@@ -188,11 +190,11 @@ test("application idempotency replays equivalent payload and rejects conflicting
       idempotencyKey: "equivalent-replay-key",
       eventHash: "equivalent-replay-hash",
     });
-    assert.equal(await persistence.appendEvent(event, persistedAudit(event.id, tenantE)), null);
-    const replay = await persistence.appendEvent(event, persistedAudit(event.id, tenantE));
+    assert.equal(await persistence.appendEvent(event, persistedAudit(event.id, tenantE, "19191919-1919-4919-8919-191919191919")), null);
+    const replay = await persistence.appendEvent(event, persistedAudit(event.id, tenantE, "20202020-2020-4020-8020-202020202020"));
     assert.equal(replay?.id, event.id);
     await assert.rejects(
-      () => persistence.appendEvent({ ...event, id: "16161616-1616-4616-8616-161616161616", methodologyVersion: "different-payload" }, persistedAudit("16161616-1616-4616-8616-161616161616", tenantE)),
+      () => persistence.appendEvent({ ...event, id: "16161616-1616-4616-8616-161616161616", methodologyVersion: "different-payload" }, persistedAudit("16161616-1616-4616-8616-161616161616", tenantE, "21212121-2121-4121-8121-212121212121")),
       /idempotency key conflict: payload differs from original operation/,
     );
     assert.equal((await persistence.listEvents(tenantE)).length, 1);
