@@ -354,6 +354,18 @@ test("Data Intake lease expiry is reclaimed by a new process and stale fencing t
   // must reclaim an expired durable claim rather than racing a still-live lease.
   await new Promise<void>(resolve => setTimeout(resolve, 1300));
 
+  const expiredOwnerWrite = runDataIntakeWorker("lease-expired-save", {
+    INTAKE_LEASE_DURATION_MS: "1000",
+    INTAKE_ACTIVITY_ID: String(initial.activityId),
+    INTAKE_STALE_TOKEN: String(initial.claimToken),
+  });
+  assert.equal(expiredOwnerWrite.phase, "lease-expired-save");
+  assert.notEqual(Number(expiredOwnerWrite.pid), Number(initial.pid));
+  assert.equal(expiredOwnerWrite.expiredLeaseRejected, true,
+    "an expired owner must be rejected even before another process reclaims the lease");
+  assert.equal(expiredOwnerWrite.finalStatus, "processing",
+    "the expired owner's attempted write must not mutate the persisted activity");
+
   const reclaimed = runDataIntakeWorker("lease-reclaim", {
     INTAKE_LEASE_DURATION_MS: "1000",
     INTAKE_STALE_TOKEN: String(initial.claimToken),

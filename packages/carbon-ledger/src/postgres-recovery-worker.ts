@@ -227,6 +227,32 @@ async function main(): Promise<Record<string, unknown>> {
       };
     }
 
+    if (mode === "lease-expired-save") {
+      const activityId = process.env.INTAKE_ACTIVITY_ID;
+      const staleToken = process.env.INTAKE_STALE_TOKEN;
+      if (!activityId || !staleToken) throw new Error("INTAKE_ACTIVITY_ID and INTAKE_STALE_TOKEN are required");
+      const before = await intake.getActivity(tenantId, activityId);
+      if (!before) throw new Error("durable claimed activity not found");
+      let expiredLeaseRejected = false;
+      try {
+        await intake.saveActivity({ ...before, calculationStatus: "failed" }, staleToken);
+      } catch (error) {
+        if (String(error).includes("intake claim lease lost")) expiredLeaseRejected = true;
+        else throw error;
+      }
+      if (!expiredLeaseRejected) throw new Error("expired lease token unexpectedly persisted state before a new claimant arrived");
+      const after = await intake.getActivity(tenantId, activityId);
+      assert.ok(after);
+      assert.equal(after.calculationStatus, "processing", "expired token must not alter durable activity state");
+      return {
+        phase: mode,
+        pid: process.pid,
+        activityId,
+        expiredLeaseRejected,
+        finalStatus: after.calculationStatus,
+      };
+    }
+
     if (mode === "lease-reclaim") {
       const staleToken = process.env.INTAKE_STALE_TOKEN;
       if (!staleToken) throw new Error("INTAKE_STALE_TOKEN is required");
