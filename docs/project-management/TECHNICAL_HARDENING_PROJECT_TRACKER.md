@@ -705,3 +705,18 @@ Actions in this tranche:
 Known not implemented or not verifiable here: a concrete identity-provider/session/JWT integration; MFA/SSO/revocation; roles and permissions; worker queue handlers; upload/blob/download/export routes; secret/KMS and deployment network/proxy/rate-limit configuration; actual residency/retention/backups and legal review. These must remain explicit gates. Do not claim full product authorization, privacy compliance or production readiness from local/CI tests.
 
 The new test result, exact workflow SHAs and residual issues will be added after CI completes. Stress/soak testing and official ADEME/DESNZ factor verification remain separate follow-on workstreams; no production factor is promoted by this activity.
+
+
+### End-to-end API authorization and tenant-isolation — verified code head, 2026-10-10
+
+Implementation/test SHA `e65f273f15f0b7667d2c92d632f01f0178891ac2` passed all required workflows:
+- [Test CI #257](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38071325608): 108 passed, 0 failed, 0 skipped; `npm ci`, `typecheck`, `typecheck:tests`, and `npm test` passed.
+- [Supply Chain Security #177](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38071325604): PASS.
+- [Factor Provenance Gate #172](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38071325609): PASS.
+
+Root causes and corrections recorded:
+- Direct named ESM import in the API test failed under Node 22/tsx. Replaced it with explicit namespace/default export resolution and a fail-fast runtime guard.
+- The new PostgreSQL RLS test parsed literal backslash-n and over-escaped digit regexes, yielding an empty result despite valid database isolation. Corrected the parser; kept all SELECT isolation, fail-closed no-context, and cross-tenant write assertions.
+- No security assertion was removed. The new HTTP tests and the real PostgreSQL RLS test pass on the same SHA.
+
+Remaining release gates: real identity provider/session/JWT validation, MFA/SSO/revocation, explicit roles/object authorization, worker/document/export authorization, deployment role/pool/secret/network settings, privacy/residency/retention/backup evidence, and independent security/privacy review. CI is not production authorization or legal/security certification. PR #21 remains draft/open/unmerged; Issue #27 remains open.
