@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { POSTGRES_SCHEMA } from "./persistence.js";
 import { Pool } from "pg";
 import { PostgresLedgerPersistence, type PgPool } from "./postgres.js";
@@ -294,42 +295,73 @@ test("adapter rejects PostgreSQL bigint sequences outside JavaScript safe intege
   }
 });
 
-test("Data Intake recovers the committed PostgreSQL ledger event after intake save failure and service restart", { skip: !enabled }, async () => {
-  const context = { tenantId: tenantF, actorId: actorF, methodologyVersion: "data-intake-recovery-integration", now: "2026-10-10T12:00:00.000Z" };
-  const input: ActivityInput = { companyId: tenantF, reportingPeriodId: "2026", scope: 2, activityType: "electricity", quantity: 100, unit: "kWh", method: "activity_based", dataAvailability: "provided", dataQuality: { level: "A", completeness: 1, rationale: "integration fixture" }, confidence: { score: 1, level: "high", source: "manual", humanReviewed: true }, evidenceIds: ["recovery-evidence-1"], classificationStatus: "classified", calculationStatus: "ready", idempotencyKey: "data-intake-postgres-restart-recovery" };
-  const factor = { id: "postgres-recovery-factor", version: "1", status: "verified", name: "Synthetic test factor", scope: 2, category: "electricity", geography: "TEST", activityUnit: "kWh", factorUnit: "kgCO2e/kWh", value: 0.4, dataQuality: "high", provenance: { sourceName: "Synthetic fixture", sourceUrl: "https://example.invalid/factor", sourceVersion: "fixture-v1", license: "test-only", legalBasis: "Synthetic fixture; not production evidence", attributionRequired: false, redistributionAllowed: true, sourceContentSha256: "ba7b10b5afb62f2852574f5969acaa64ba71d4f062ac2224f90f9ec23435fdaa", retrievedAt: "2026-01-01T00:00:00Z", geography: "TEST", originalUnit: "kWh", normalizedUnit: "kWh", transformation: "No transformation", evidenceRef: "test://factor/postgres-recovery-factor" } } as const;
-  const provider = { getTrustedTenantContext: () => ({ tenantId: tenantF, actorId: actorF }) };
-  const pool1 = new Pool({ connectionString: databaseUrl, max: 3 });
-  const appPool1 = asApplicationRolePool(pool1);
-  const intake1 = new PostgresDataIntakePersistence(appPool1, provider);
-  let failOnce = true;
-  const failing = new Proxy(intake1, { get(target, prop, receiver) { if (prop === "saveActivity") return async (value: ActivityRecord, token?: string) => { if (value.calculationStatus === "calculated" && failOnce) { failOnce = false; throw new Error("simulated final intake persistence failure"); } return target.saveActivity(value, token); }; const member = Reflect.get(target, prop, receiver) as unknown; return typeof member === "function" ? member.bind(target) : member; } }) as DataIntakePersistence;
-  let resolverCalls = 0;
-  const ledger1 = new PostgresLedgerPersistence(appPool1, provider);
-  const service1 = new DataIntakeService(failing, { resolve: async () => { resolverCalls++; return factor as any; } }, new CarbonLedgerDomain(ledger1));
-  await assert.rejects(() => service1.ingestActivity(createActivity(input), context), /simulated final intake persistence failure/);
-  const originalEvents = await ledger1.listEvents(tenantF);
-  assert.equal(originalEvents.length, 1);
-  const originalEvent = originalEvents[0];
-  const savedBeforeRestart = (await intake1.listActivities(tenantF, "2026"))[0];
-  assert.ok(savedBeforeRestart);
-  assert.equal(savedBeforeRestart.calculationStatus, "failed");
-  assert.equal(savedBeforeRestart.factorId, factor.id);
-  assert.equal(savedBeforeRestart.factorVersion, factor.version);
-  await pool1.end();
-  const pool2 = new Pool({ connectionString: databaseUrl, max: 3 });
-  const appPool2 = asApplicationRolePool(pool2);
-  const intake2 = new PostgresDataIntakePersistence(appPool2, provider);
-  const ledger2 = new PostgresLedgerPersistence(appPool2, provider);
-  const service2 = new DataIntakeService(intake2, { resolve: async () => { resolverCalls++; return factor as any; } }, new CarbonLedgerDomain(ledger2));
-  const recovered = await service2.ingestActivity(createActivity(input), context);
-  assert.equal(recovered.activity.activityId, savedBeforeRestart.activityId);
-  assert.equal(recovered.activity.calculationStatus, "calculated");
-  assert.equal(recovered.ledgerEvent?.id, originalEvent.id);
-  assert.equal(recovered.ledgerEvent?.eventHash, originalEvent.eventHash);
-  assert.equal(resolverCalls, 1, "recovery must use the persisted factor snapshot");
-  assert.equal((await ledger2.listEvents(tenantF)).length, 1, "retry must not duplicate the committed ledger event");
-  assert.equal((await intake2.listActivities(tenantF, "2026")).length, 1);
-  assert.equal((await intake2.listActivities(tenantF, "2026"))[0].calculationStatus, "calculated");
-  await pool2.end();
+
+function runDataIntakeWorker(mode: string, extraEnv: Record<string, string> = {}): Record<string, unknown> {
+  if (!databaseUrl) throw new Error("PG_INTEGRATION_URL is required");
+  const workerPath = fileURLToPath(new URL("./postgres-recovery-worker.ts", import.meta.url));
+  const result = spawnSync(process.execPath, ["--import", "tsx", workerPath, mode], {
+    cwd: process.cwd(),
+    env: { ...process.env, PG_INTEGRATION_URL: databaseUrl, ...extraEnv },
+    encoding: "utf8",
+    timeout: 60_000,
+    maxBuffer: 4 * 1024 * 1024,
+  });
+  assert.equal(result.error, undefined, "worker spawn failed: " + String(result.error));
+  assert.equal(result.status, 0,
+    "Data Intake worker " + mode + " failed. stdout:\n" + result.stdout + "\nstderr:\n" + result.stderr);
+  const lines = result.stdout.trim().split(/\r?\n/).filter(Boolean);
+  assert.ok(lines.length > 0, "worker " + mode + " returned no JSON result");
+  let parsed: unknown = undefined;
+  assert.doesNotThrow(() => { parsed = JSON.parse(lines[lines.length - 1]); },
+    "worker " + mode + " must end with a JSON result");
+  assert.ok(parsed !== null && typeof parsed === "object", "worker result must be an object");
+  return parsed as Record<string, unknown>;
+}
+
+test("Data Intake recovers a committed PostgreSQL ledger event across an OS process boundary", { skip: !enabled }, () => {
+  const failed = runDataIntakeWorker("recovery-fail");
+  assert.equal(failed.phase, "recovery-fail");
+  assert.equal(failed.activityStatus, "failed");
+  assert.equal(failed.eventCount, 1);
+  assert.equal(failed.factorId, "postgres-recovery-factor");
+  assert.equal(failed.factorVersion, "1");
+  assert.notEqual(Number(failed.pid), process.pid, "initial operation must run in a separate process");
+
+  const recovered = runDataIntakeWorker("recovery-retry");
+  assert.equal(recovered.phase, "recovery-retry");
+  assert.notEqual(Number(recovered.pid), process.pid, "retry must run in a separate process");
+  assert.notEqual(Number(recovered.pid), Number(failed.pid), "failure and recovery must be separate OS processes");
+  assert.equal(recovered.activityStatus, "calculated");
+  assert.equal(recovered.activityId, failed.activityId);
+  assert.equal(recovered.eventId, failed.eventId);
+  assert.equal(recovered.eventHash, failed.eventHash);
+  assert.equal(recovered.eventCount, 1, "recovery must not duplicate the committed ledger event");
+  assert.equal(recovered.activityCount, 1, "idempotency must preserve one intake activity");
+  assert.equal(recovered.factorId, failed.factorId);
+  assert.equal(recovered.factorVersion, failed.factorVersion);
+  assert.equal(recovered.factorValue, 0.4);
+  assert.equal(recovered.resolverCalls, 0, "recovery must use the persisted factor/event snapshot rather than resolve a new factor");
+});
+
+test("Data Intake lease expiry is reclaimed by a new process and stale fencing token is rejected", { skip: !enabled }, async () => {
+  const initial = runDataIntakeWorker("lease-claim", { INTAKE_LEASE_DURATION_MS: "1000" });
+  assert.equal(initial.phase, "lease-claim");
+  assert.equal(initial.claimStatus, "claimed");
+  assert.notEqual(Number(initial.pid), process.pid);
+  assert.equal(typeof initial.claimToken, "string");
+
+  // Lease duration has a one-second minimum. Wait beyond it so the next process
+  // must reclaim an expired durable claim rather than racing a still-live lease.
+  await new Promise<void>(resolve => setTimeout(resolve, 1300));
+
+  const reclaimed = runDataIntakeWorker("lease-reclaim", {
+    INTAKE_LEASE_DURATION_MS: "1000",
+    INTAKE_STALE_TOKEN: String(initial.claimToken),
+  });
+  assert.equal(reclaimed.phase, "lease-reclaim");
+  assert.notEqual(Number(reclaimed.pid), Number(initial.pid));
+  assert.equal(reclaimed.reclaimed, true);
+  assert.equal(reclaimed.staleTokenRejected, true, "the prior process token must not overwrite the new claimant");
+  assert.equal(reclaimed.claimTokenChanged, true);
+  assert.equal(reclaimed.finalStatus, "not_ready");
 });
