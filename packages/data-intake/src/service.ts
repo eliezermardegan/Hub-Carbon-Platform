@@ -32,7 +32,7 @@ export class DataIntakeService {
     if (input.companyId !== context.tenantId) throw new Error("activity company does not match tenant");
 
     const requested = createActivity(input);
-    const claim = await this.persistence.claimActivity(requested, intakePayloadHash(requested));
+    const claim = await this.persistence.claimActivity(requested, intakePayloadHash(requested, context));
     if (claim.kind === "conflict") throw new Error("idempotency key conflict: payload differs from original intake");
     if (claim.kind === "busy") throw new Error("idempotent intake request is already processing");
     if (claim.kind === "existing") {
