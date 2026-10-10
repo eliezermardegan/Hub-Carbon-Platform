@@ -48,4 +48,6 @@ Per-tenant verification checks sequence continuity, previous-hash links, event h
 
 ## Test status
 
-Schema/unit coverage verifies the trusted-context contract and fail-closed behavior. Real PostgreSQL integration coverage is still required before this P0 is considered complete; the current development environment does not provide a PostgreSQL server/client or network access to provision one. No production database was contacted.
+The real-PostgreSQL CI workflow passed on commit `8e66dfb` (run [#153](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38049706280)): dependency installation, typecheck, and integration tests all succeeded against the workflow's PostgreSQL service. That run also confirmed the earlier failing tenant-read test was using a tenant that already had fixture rows.
+
+A follow-up hardening change explicitly scopes `listAudit` and audit event-reference lookups by tenant, and adds an integration assertion for empty tenant audit reads. CI must pass on the resulting latest branch head before this P0 is considered complete. Do not infer validation of the latest commit from the earlier successful run. No production database was contacted.
