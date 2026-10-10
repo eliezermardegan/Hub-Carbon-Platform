@@ -5,8 +5,29 @@ import { POSTGRES_SCHEMA } from "./persistence.js";
 import { Pool } from "pg";
 import { PostgresLedgerPersistence, type PgPool } from "./postgres.js";
 import { CarbonLedgerDomain } from "./domain.js";
-import { DataIntakeService, createActivity, PostgresDataIntakePersistence, type ActivityInput, type ActivityRecord } from "../../data-intake/src/index.js";
+import * as dataIntakeServiceModule from "../../data-intake/src/service.ts";
+import * as dataIntakeModelModule from "../../data-intake/src/model.ts";
+import * as dataIntakePostgresModule from "../../data-intake/src/postgres.ts";
+import type { ActivityInput, ActivityRecord } from "../../data-intake/src/model.js";
 import type { DataIntakePersistence } from "../../data-intake/src/persistence.js";
+
+function runtimeExport<T>(moduleNamespace: unknown, name: string): T {
+  const namespace = moduleNamespace as Record<string, unknown>;
+  const defaultExport = namespace.default;
+  const defaultRecord = defaultExport !== null &&
+    (typeof defaultExport === "object" || typeof defaultExport === "function")
+    ? defaultExport as Record<string, unknown>
+    : undefined;
+  const candidate = namespace[name] ?? defaultRecord?.[name] ??
+    (name === "DataIntakeService" && typeof defaultExport === "function" ? defaultExport : undefined);
+  assert.notEqual(candidate, undefined, `Data Intake runtime export '${name}' is unavailable`);
+  return candidate as T;
+}
+
+const DataIntakeService = runtimeExport<typeof import("../../data-intake/src/service.js").DataIntakeService>(dataIntakeServiceModule, "DataIntakeService");
+const createActivity = runtimeExport<typeof import("../../data-intake/src/model.js").createActivity>(dataIntakeModelModule, "createActivity");
+const PostgresDataIntakePersistence = runtimeExport<typeof import("../../data-intake/src/postgres.js").PostgresDataIntakePersistence>(dataIntakePostgresModule, "PostgresDataIntakePersistence");
+const DATA_INTAKE_POSTGRES_SCHEMA = runtimeExport<string>(dataIntakePostgresModule, "DATA_INTAKE_POSTGRES_SCHEMA");
 
 const databaseUrl = process.env.PG_INTEGRATION_URL;
 const enabled = Boolean(databaseUrl);

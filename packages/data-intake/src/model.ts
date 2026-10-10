@@ -118,3 +118,14 @@ export function createActivity(input:ActivityInput):ActivityRecord {
   const v=validateActivity(activity); if(!v.valid) throw new Error(v.issues.filter(i=>i.severity==="error").map(i=>i.message).join("; ")); return activity;
 }
 function randomId():string { return globalThis.crypto?.randomUUID?.()??`activity_${Date.now()}_${Math.random().toString(36).slice(2)}`; }
+
+// Default runtime surface supports Node's ESM/CJS interop used by tsx's test runner.
+// Named exports remain canonical for normal TypeScript consumers.
+export default {
+  SCOPE3_CATEGORIES,
+  isScope3Category,
+  defaultIdempotencyKey,
+  validateActivity,
+  toLedgerHandoff,
+  createActivity,
+};

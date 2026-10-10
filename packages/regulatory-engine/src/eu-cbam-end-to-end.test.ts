@@ -3,7 +3,11 @@ import test from "node:test";
 import { CarbonLedgerDomain } from "../../carbon-ledger/src/domain.js";
 import type { LedgerPersistence, PersistedLedgerEvent, AuditRecord } from "../../carbon-ledger/src/persistence.js";
 import type { EmissionFactor } from "../../factor-registry/src/index.js";
-import { DataIntakeService } from "../../data-intake/src/index.js";
+import * as dataIntakeServiceModule from "../../data-intake/src/service.ts";
+
+const DataIntakeService = ((dataIntakeServiceModule as any).DataIntakeService ??
+  (dataIntakeServiceModule as any).default?.DataIntakeService ??
+  (dataIntakeServiceModule as any).default) as typeof import("../../data-intake/src/service.js").DataIntakeService;
 
 import type { ActivityRecord } from "../../data-intake/src/index.js";
 import { InMemoryDataIntakePersistence } from "../../data-intake/src/persistence.js";
