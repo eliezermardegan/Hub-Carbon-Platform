@@ -9,6 +9,7 @@ const databaseUrl = process.env.PG_INTEGRATION_URL;
 const enabled = Boolean(databaseUrl);
 const tenantA = "11111111-1111-4111-8111-111111111111";
 const tenantB = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const tenantC = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const actor = "22222222-2222-4222-8222-222222222222";
 
 function psql(sql: string): string {
@@ -85,10 +86,10 @@ test("PostgresLedgerPersistence executes tenant-scoped reads through the pg driv
   const pool = new Pool({ connectionString: databaseUrl, max: 2 });
   try {
     const persistence = new PostgresLedgerPersistence(pool as unknown as PgPool, {
-      getTrustedTenantContext: () => ({ tenantId: tenantA, actorId: actor }),
+      getTrustedTenantContext: () => ({ tenantId: tenantC, actorId: actor }),
     });
-    assert.deepEqual(await persistence.listEvents(tenantA), []);
-    assert.equal(await persistence.getHead(tenantA), null);
+    assert.deepEqual(await persistence.listEvents(tenantC), []);
+    assert.equal(await persistence.getHead(tenantC), null);
     await assert.rejects(() => persistence.listEvents(tenantB), /does not match trusted context/);
   } finally {
     await pool.end();
