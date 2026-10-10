@@ -93,6 +93,17 @@ test("persists unresolved activity as not_ready and never appends to ledger", as
   assert.equal(ledger.uniqueWrites(), 0);
 });
 
+test("does not trust caller-supplied factor identifiers when resolution fails", async () => {
+  const persistence = makePersistence();
+  const ledger = idempotentLedger();
+  const service = new DataIntakeService(persistence, { resolve: async () => null }, ledger.ledger);
+  const result = await service.ingestActivity(activity({ factorId: "attacker-factor", factorVersion: "999" }), context());
+  assert.equal(result.activity.factorId, undefined);
+  assert.equal(result.activity.factorVersion, undefined);
+  assert.equal(result.activity.calculationStatus, "not_ready");
+  assert.equal(ledger.uniqueWrites(), 0);
+});
+
 test("persists blocked factor state before rejecting and never appends to ledger", async () => {
   const saved: ActivityRecord[] = [];
   const blockedFactor = { ...factor, status: "blocked", provenance: { ...factor.provenance, redistributionAllowed: false } };
