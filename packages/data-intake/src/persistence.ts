@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { ActivityRecord, Company, Evidence, ReportingPeriod, Site, Source, SourceDocument } from "./index";
 
 export type IntakeClaim =
-  | { kind: "claimed" }
+  | { kind: "claimed"; activity: ActivityRecord }
   | { kind: "busy" }
   | { kind: "conflict" }
   | { kind: "existing"; activity: ActivityRecord };
@@ -32,7 +32,8 @@ function canonicalize(value: unknown): string {
 }
 
 export function intakePayloadHash(value: ActivityRecord): string {
-  return createHash("sha256").update(canonicalize(value), "utf8").digest("hex");
+  const { activityId: _activityId, calculationStatus: _status, factorId: _factorId, factorVersion: _factorVersion, ...request } = value;
+  return createHash("sha256").update(canonicalize(request), "utf8").digest("hex");
 }
 
 interface ActivityClaimRecord {
@@ -76,23 +77,18 @@ export class InMemoryDataIntakePersistence implements DataIntakePersistence {
       if (this.inFlight.has(key)) return { kind: "busy" };
       this.inFlight.add(key);
       current.status = "processing";
-      return { kind: "claimed" };
+      return { kind: "claimed", activity: structuredClone(saved) };
     }
     this.idempotency.set(key, { activityId: v.activityId, payloadHash, status: "processing" });
     this.activities.set(v.activityId, structuredClone({ ...v, calculationStatus: "processing" }));
     this.inFlight.add(key);
-    return { kind: "claimed" };
+    return { kind: "claimed", activity: structuredClone(this.activities.get(v.activityId)!) };
   }
 
   async saveActivity(v: ActivityRecord): Promise<ActivityRecord | null> {
     const key = v.companyId + ":" + v.idempotencyKey;
     const claim = this.idempotency.get(key);
     if (claim) {
-      const existing = this.activities.get(claim.activityId);
-      if (!existing || intakePayloadHash({ ...v, calculationStatus: existing.calculationStatus }) !== claim.payloadHash) {
-        // The request fingerprint belongs to the original input, not derived workflow state.
-        // Fingerprint conflict checks are performed by claimActivity; state updates must preserve that fingerprint.
-      }
       this.activities.set(claim.activityId, structuredClone({ ...v, activityId: claim.activityId }));
       claim.status = v.calculationStatus;
       if (v.calculationStatus !== "processing" && v.calculationStatus !== "ready") this.inFlight.delete(key);
