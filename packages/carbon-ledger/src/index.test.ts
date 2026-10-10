@@ -65,3 +65,42 @@ test("rejects an activity/factor mismatch", () => {
     /does not match supplied factor/
   );
 });
+
+
+test("hash verification detects tampered event content", () => {
+  const ledger = new CarbonLedger();
+  ledger.append(activity, factor, [], "pbhg-2026.1", "2026-10-07T12:00:00Z");
+  const internal = ledger as unknown as { entries: Array<{ methodologyVersion: string }> };
+  internal.entries[0].methodologyVersion = "tampered";
+  assert.deepEqual(ledger.verify(), {
+    valid: false,
+    checkedEntries: 0,
+    error: "entry hash mismatch at entry activity-001",
+  });
+});
+
+test("hash verification detects a broken previous-hash link", () => {
+  const ledger = new CarbonLedger();
+  ledger.append(activity, factor, [], "pbhg-2026.1", "2026-10-07T12:00:00Z");
+  ledger.append({ ...activity, id: "activity-002", quantity: 50 }, factor, [], "pbhg-2026.1", "2026-10-07T12:01:00Z");
+  const internal = ledger as unknown as { entries: Array<{ previousEntryHash: string | null }> };
+  internal.entries[1].previousEntryHash = "missing-link";
+  assert.deepEqual(ledger.verify(), {
+    valid: false,
+    checkedEntries: 1,
+    error: "previous hash mismatch at entry activity-002",
+  });
+});
+
+test("hash verification detects a sequence gap", () => {
+  const ledger = new CarbonLedger();
+  ledger.append(activity, factor, [], "pbhg-2026.1", "2026-10-07T12:00:00Z");
+  ledger.append({ ...activity, id: "activity-002", quantity: 50 }, factor, [], "pbhg-2026.1", "2026-10-07T12:01:00Z");
+  const internal = ledger as unknown as { entries: Array<{ sequence: number }> };
+  internal.entries[1].sequence = 3;
+  assert.deepEqual(ledger.verify(), {
+    valid: false,
+    checkedEntries: 1,
+    error: "sequence mismatch at entry activity-002",
+  });
+});
