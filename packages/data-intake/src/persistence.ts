@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { ActivityRecord, Company, Evidence, ReportingPeriod, Site, Source, SourceDocument } from "./index";
+import type { ActivityRecord, Company, Evidence, ReportingPeriod, Site, Source, SourceDocument } from "./model.js";
 
 export type IntakeClaim =
   | { kind: "claimed"; activity: ActivityRecord; claimToken: string }

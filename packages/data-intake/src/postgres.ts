@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { ActivityRecord, Company, Evidence, ReportingPeriod, Site, Source, SourceDocument } from "./index.js";
+import type { ActivityRecord, Company, Evidence, ReportingPeriod, Site, Source, SourceDocument } from "./model.js";
 import type { DataIntakePersistence, IntakeClaim } from "./persistence.js";
 import { intakePayloadHash } from "./persistence.js";
 import type { PgPool, TrustedTenantContextProvider } from "../../carbon-ledger/src/postgres.js";

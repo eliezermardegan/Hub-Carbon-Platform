@@ -1,7 +1,7 @@
 import { calculateEmissions } from "../../carbon-core/src/index.js";
 import { factorIsImportable, type EmissionFactor } from "../../factor-registry/src/index.js";
 import { type CarbonLedgerDomain, type DomainEvent, type LedgerCommandContext } from "../../carbon-ledger/src/domain.js";
-import { createActivity, type ActivityInput, type ActivityRecord, type Evidence, type LedgerHandoff, type SourceDocument, toLedgerHandoff } from "./index.js";
+import { createActivity, type ActivityInput, type ActivityRecord, type Evidence, type LedgerHandoff, type SourceDocument, toLedgerHandoff } from "./model.js";
 import { intakePayloadHash, type DataIntakePersistence } from "./persistence.js";
 
 export interface FactorResolver {
