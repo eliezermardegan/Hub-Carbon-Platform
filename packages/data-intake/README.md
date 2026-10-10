@@ -34,3 +34,10 @@ A factor is importable only when its status is exactly verified, redistribution 
 
 
 Validation evidence on code head 3a02d2b7081b93e9bdd920b7be2db7f396e88745: Test CI #226 passed 98/98 (PostgreSQL 16.15), Supply Chain Security #146 passed, and Factor Provenance Gate #141 passed. A subsequent documentation refresh requires fresh checks.
+
+
+## Durable PostgreSQL Data Intake follow-up — 2026-10-10
+
+Status: **IMPLEMENTED — UNVERIFIED**. A PostgreSQL adapter has been added with tenant-scoped JSONB records, unique tenant/idempotency-key activity rows, transaction-local tenant context, RLS, lease expiry and claim fencing tokens. The integration suite now includes a real PostgreSQL scenario: commit ledger event, simulate failure before final calculated-state intake save, close the first pool, create fresh adapters/service, retry, and assert the original event/activity is recovered without a duplicate.
+
+Initial Test CI attempts failed during module export/import resolution before the new recovery scenario executed. Import-resolution fixes have been pushed; the exact current-head CI result must be checked before declaring the scenario tested. Do not mark this work validated until the recovery test passes and Test CI, Supply Chain Security, and Factor Provenance Gate all pass on the same final SHA. PR #21 remains draft and Issue #27 remains open. No production migration or deployment occurred.
