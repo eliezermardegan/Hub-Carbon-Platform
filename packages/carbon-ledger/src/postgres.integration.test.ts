@@ -7,7 +7,7 @@ import { PostgresLedgerPersistence, type PgPool } from "./postgres.js";
 import { CarbonLedgerDomain } from "./domain.js";
 import { DataIntakeService } from "../../data-intake/src/service.js";
 import { createActivity, type ActivityInput, type ActivityRecord } from "../../data-intake/src/index.js";
-import { DATA_INTAKE_POSTGRES_SCHEMA, PostgresDataIntakePersistence } from "../../data-intake/src/postgres.ts";
+import { PostgresDataIntakePersistence } from "../../data-intake/src/postgres.ts";
 import type { DataIntakePersistence } from "../../data-intake/src/persistence.js";
 
 const databaseUrl = process.env.PG_INTEGRATION_URL;
@@ -87,7 +87,17 @@ test("real PostgreSQL integration prerequisites are explicit", { skip: !enabled 
   assert.match(psql("select version()"), /^PostgreSQL /);
   psql("drop schema public cascade; create schema public; grant usage on schema public to public; revoke create on schema public from public;");
   psql(POSTGRES_SCHEMA);
-  psql(DATA_INTAKE_POSTGRES_SCHEMA);
+  psql([
+    "create table if not exists data_intake_records (tenant_id text not null, entity_type text not null, entity_id text not null, company_id text not null, payload jsonb not null, created_at timestamptz not null default now(), updated_at timestamptz not null default now(), primary key (tenant_id, entity_type, entity_id), check (tenant_id = company_id))",
+    "create table if not exists data_intake_activities (tenant_id text not null, company_id text not null, activity_id text not null, reporting_period_id text not null, idempotency_key text not null, payload_hash text not null, status text not null check (status in ('processing','not_ready','ready','calculated','blocked','failed')), payload jsonb not null, lease_token uuid, lease_until timestamptz, created_at timestamptz not null default now(), updated_at timestamptz not null default now(), primary key (tenant_id, activity_id), unique (tenant_id, idempotency_key), check (tenant_id = company_id))",
+    "create index if not exists data_intake_activities_tenant_period on data_intake_activities (tenant_id, reporting_period_id, created_at)",
+    "alter table data_intake_records enable row level security", "alter table data_intake_records force row level security",
+    "alter table data_intake_activities enable row level security", "alter table data_intake_activities force row level security",
+    "drop policy if exists data_intake_records_tenant_isolation on data_intake_records",
+    "create policy data_intake_records_tenant_isolation on data_intake_records using (tenant_id = nullif(current_setting('app.tenant_id', true), '')) with check (tenant_id = nullif(current_setting('app.tenant_id', true), ''))",
+    "drop policy if exists data_intake_activities_tenant_isolation on data_intake_activities",
+    "create policy data_intake_activities_tenant_isolation on data_intake_activities using (tenant_id = nullif(current_setting('app.tenant_id', true), '')) with check (tenant_id = nullif(current_setting('app.tenant_id', true), ''))"
+  ].join("\\n"));
   psql(`do $$ begin if not exists (select from pg_roles where rolname = 'carbon_ledger_app') then create role carbon_ledger_app nologin nosuperuser nobypassrls; end if; end $$;`);
   psql("grant usage on schema public to carbon_ledger_app; grant select, insert on carbon_ledger_events, carbon_ledger_audit to carbon_ledger_app; grant select, insert, update on carbon_ledger_tenant_heads to carbon_ledger_app; grant select, insert, update on data_intake_records, data_intake_activities to carbon_ledger_app;");
   assert.equal(psql("select rolsuper || ':' || rolbypassrls from pg_roles where rolname='carbon_ledger_app'"), "false:false");
