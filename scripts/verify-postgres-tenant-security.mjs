@@ -46,8 +46,8 @@ function runPsql(args, purpose) {
 const migrationPath = fileURLToPath(new URL("../infra/postgres/migrations/002_data_intake.sql", import.meta.url));
 const auditPath = fileURLToPath(new URL("../infra/postgres/verify_tenant_security.sql", import.meta.url));
 
-// The main integration suite has already created the ledger and Data Intake tables.
-// Add the legacy carbon_* schema so the audit covers every declared tenant-scoped table.
+// This runner executes after npm test, so all main-suite ledger and Data Intake
+// tables exist. Add the legacy carbon_* schema for complete policy inventory.
 runPsql(["-f", migrationPath], "apply the disposable carbon_* schema migration");
 
 const roleBootstrap = `
@@ -65,12 +65,9 @@ $roles$;
 ALTER ROLE carbon_ledger_app NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 ALTER ROLE carbon_ledger_runtime LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 
-REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM carbon_ledger_app, carbon_ledger_runtime;
-REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM carbon_ledger_app, carbon_ledger_runtime;
-REVOKE ALL PRIVILEGES ON SCHEMA public FROM carbon_ledger_app, carbon_ledger_runtime;
+
 GRANT USAGE ON SCHEMA public TO carbon_ledger_app, carbon_ledger_runtime;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC, carbon_ledger_app, carbon_ledger_runtime;
-
 REVOKE carbon_ledger_app FROM carbon_ledger_runtime;
 GRANT carbon_ledger_app TO carbon_ledger_runtime WITH INHERIT FALSE, SET TRUE, ADMIN FALSE;
 GRANT SELECT, INSERT ON carbon_ledger_events, carbon_ledger_audit TO carbon_ledger_app;
