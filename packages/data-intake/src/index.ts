@@ -65,7 +65,7 @@ export interface ActivityRecord {
   financialAmount?: number; currency?: string; method: CalculationMethod;
   dataAvailability: DataAvailability; dataQuality: DataQuality; confidence: Confidence;
   evidenceIds: string[]; classificationStatus: "pending"|"classified"|"review_required"|"rejected";
-  calculationStatus: "not_ready"|"ready"|"calculated"|"blocked";
+  calculationStatus: "processing"|"not_ready"|"ready"|"calculated"|"blocked"|"failed";
   factorId?: string; factorVersion?: string; idempotencyKey: string;
 }
 export type ActivityInput = Omit<ActivityRecord,"activityId"|"idempotencyKey"> & {activityId?:string; idempotencyKey?:string};
