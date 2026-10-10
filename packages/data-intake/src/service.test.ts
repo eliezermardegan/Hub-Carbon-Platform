@@ -132,6 +132,18 @@ test("rejects conflicting payload reuse of an idempotency key before ledger appe
   assert.equal(ledger.calls(), 1);
 });
 
+test("rejects reuse of an idempotency key by a different actor", async () => {
+  const persistence = makePersistence();
+  const ledger = idempotentLedger();
+  const service = new DataIntakeService(persistence, { resolve: async () => factor }, ledger.ledger);
+  await service.ingestActivity(activity(), context());
+  await assert.rejects(
+    service.ingestActivity(activity(), { ...context(), actorId: "different-actor" }),
+    /idempotency key conflict: payload differs from original intake/,
+  );
+  assert.equal(ledger.uniqueWrites(), 1);
+});
+
 test("recovers when ledger append succeeded but final intake persistence failed", async () => {
   let failCalculatedSave = true;
   const persistence = makePersistence(value => {
