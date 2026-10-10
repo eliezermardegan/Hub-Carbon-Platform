@@ -37,6 +37,20 @@ test("append is deterministic and idempotent", async () => {
   assert.equal(one.eventHash,two.eventHash); assert.equal(p.events.length,1); assert.equal(one.calculation?.emissionsKgCo2e,10);
 });
 
+test("cached idempotency replay rejects a conflicting payload or actor", async () => {
+  const p = new FakePersistence(), d = new CarbonLedgerDomain(p);
+  await d.append({ id: "a1", activity, factor, evidence: [] }, ctx);
+  await assert.rejects(
+    d.append({ id: "a1", activity: { ...activity, quantity: 200 }, factor, evidence: [] }, ctx),
+    /idempotency key conflict: payload differs from original operation/,
+  );
+  await assert.rejects(
+    d.append({ id: "a1", activity, factor, evidence: [] }, { ...ctx, actorId: "actor-b" }),
+    /idempotency key conflict: payload differs from original operation/,
+  );
+  assert.equal(p.events.length, 1);
+});
+
 test("restatement preserves history and creates a new event", async () => {
   const p=new FakePersistence(), d=new CarbonLedgerDomain(p);
   await d.append({id:"a1",activity,factor},ctx);
