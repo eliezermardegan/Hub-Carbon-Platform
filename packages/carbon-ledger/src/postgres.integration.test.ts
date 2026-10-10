@@ -19,7 +19,7 @@ test("real PostgreSQL integration prerequisites are explicit", { skip: !enabled 
   psql("drop schema public cascade; create schema public; grant all on schema public to public;");
   psql(POSTGRES_SCHEMA);
   psql(`do $$ begin if not exists (select from pg_roles where rolname = 'carbon_ledger_app') then create role carbon_ledger_app nologin nosuperuser nobypassrls; end if; end $$;`);
-  psql("grant usage on schema public to carbon_ledger_app; grant select, insert on carbon_ledger_events, carbon_ledger_audit, carbon_ledger_tenant_heads to carbon_ledger_app;");
+  psql("grant usage on schema public to carbon_ledger_app; grant select, insert, update, delete on carbon_ledger_events, carbon_ledger_audit, carbon_ledger_tenant_heads to carbon_ledger_app;");
   assert.equal(psql("select rolsuper || ':' || rolbypassrls from pg_roles where rolname='carbon_ledger_app'"), "false:false");
   assert.notEqual(psql("select pg_get_userbyid(relowner) from pg_class where relname='carbon_ledger_events'"), "carbon_ledger_app");
 });
@@ -33,8 +33,7 @@ test("RLS filters tenants and fails closed without transaction-local tenant cont
 });
 
 test("RLS rejects cross-tenant inserts and append-only trigger rejects mutation", { skip: !enabled }, () => {
-  const crossTenant = psql(`do $$ begin perform set_config('app.tenant_id','${tenantA}',true); insert into carbon_ledger_events(id,tenant_id,actor_id,event_type,sequence,recorded_at,methodology_version,event_hash) values ('55555555-5555-4555-8555-555555555555','${tenantB}','${actor}','entry',2,now(),'test','hash-cross'); end $$;`);
-  assert.equal(crossTenant, "");
+  assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); insert into carbon_ledger_events(id,tenant_id,actor_id,event_type,sequence,recorded_at,methodology_version,event_hash) values ('55555555-5555-4555-8555-555555555555','${tenantB}','${actor}','entry',2,now(),'test','hash-cross'); rollback;`), /row-level security|policy/i);
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_events set event_hash='tampered' where tenant_id='${tenantA}'; commit;`), /append-only|carbon ledger/i);
 });
 
