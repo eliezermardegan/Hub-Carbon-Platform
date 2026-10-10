@@ -116,3 +116,8 @@ Until then, status remains **IN PROGRESS — not a compliance attestation**.
 | Date | Change | Evidence |
 |---|---|---|
 | 2026-10-10 | Initial evidence-oriented data protection, data-flow and residency assessment created. It records unknown deployment facts as verification tasks, cites official EU/UK sources, and makes no compliance or residency claim. | PR #21; official source links in Section 2 |
+
+
+## 10. Latest code-level validation and unresolved deployment evidence — 2026-10-10
+
+The code-level API trust-boundary and intake retry changes passed [Test CI #226](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058541702) (98 passed, 0 failed, 0 skipped, PostgreSQL 16.15), [Supply Chain Security #146](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058541923) and [Factor Provenance Gate #141](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058541687) on exact code head 3a02d2b7081b93e9bdd920b7be2db7f396e88745. These are code/test results, not evidence of deployed identity configuration, data residency, retention/deletion, processor contracts, backup/restore, or legal compliance. The current documentation refresh needs its own CI checks.

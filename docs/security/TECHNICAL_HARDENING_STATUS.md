@@ -99,3 +99,13 @@ No merge, deployment, production migration, or production database access is aut
 - Created `docs/security/DATA_PROTECTION_AND_RESIDENCY_ASSESSMENT.md` with a system/data-flow inventory, processing-record fields, transfer and DPIA screening checklist, evidence register, ownership and acceptance criteria.
 - Official references: EU GDPR (EUR-Lex), ICO international transfers guidance (updated 15 January 2026) and ICO DPIA guidance. The current UK terminology/guidance must be confirmed for the specific transfer and date by a privacy/legal owner.
 - This is an assessment framework, not a completed DPIA or legal determination. Actual deployment locations, vendors, contracts and retention/deletion behavior remain unverified. This status-document refresh is documentation-only and triggers a new CI run for its resulting commit.
+
+
+## Latest intake/API/factor validation — 2026-10-10
+
+The implementation head 3a02d2b7081b93e9bdd920b7be2db7f396e88745 passed:
+- Test CI #226: https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058541702 — PostgreSQL 16.15; 98 passed, 0 failed, 0 skipped.
+- Supply Chain Security #146: https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058541923 — PASS.
+- Factor Provenance Gate #141: https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058541687 — PASS.
+
+These checks cover the code head, not this subsequent documentation refresh. Durable intake claims, cross-process failure recovery and concrete production authentication remain blockers; API authorization and data-residency deployment evidence are not complete.

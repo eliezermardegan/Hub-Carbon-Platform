@@ -75,3 +75,15 @@ Latest CI is pending for the current code/doc head. Do not label these changes T
 ## 8. Release rule
 
 PR #21 remains draft and Issue #27 remains open until latest-head CI passes, durable recovery/authentication blockers are either implemented or explicitly accepted by the accountable owner, and an independent reviewer records a decision. Green CI is not production deployment evidence or a legal compliance attestation.
+
+
+## 9. Latest code-head CI evidence — 2026-10-10
+
+Exact code head 3a02d2b7081b93e9bdd920b7be2db7f396e88745 passed:
+- Test CI #226: https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058541702 — npm ci, typecheck and tests; PostgreSQL 16.15; 98 passed, 0 failed, 0 skipped.
+- Supply Chain Security #146: https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058541923 — PASS.
+- Factor Provenance Gate #141: https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058541687 — PASS.
+
+The ledger domain now compares semantic payload fingerprints even when an event is already present in its in-memory idempotency cache. Data Intake's partial-failure recovery checks for a committed ledger event before re-resolving the factor and verifies identity, methodology, factor snapshot, activity dimensions and evidence IDs. Tests also ensure untrusted factor IDs are removed before claim creation.
+
+The above evidence applies to the code head, not the documentation commit created from it. Fresh checks are required for the resulting documentation head. Durable intake persistence, a real PostgreSQL process-restart recovery test, and production authentication/authorization/MFA remain outstanding.
