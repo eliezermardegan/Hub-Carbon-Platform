@@ -125,7 +125,7 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
   }
 
   async listAudit(tenantId: string): Promise<AuditRecord[]> {
-    return this.withTenantRead(tenantId, async client => (await client.query<AuditRecord>("SELECT id, tenant_id as \"tenantId\", actor_id as \"actorId\", action, event_id as \"eventId\", recorded_at as \"recordedAt\", metadata FROM carbon_ledger_audit ORDER BY recorded_at ASC")).rows);
+    return this.withTenantRead(tenantId, async client => (await client.query<AuditRecord>("SELECT id, tenant_id as \"tenantId\", actor_id as \"actorId\", action, event_id as \"eventId\", recorded_at as \"recordedAt\", metadata FROM carbon_ledger_audit WHERE tenant_id = $1 ORDER BY recorded_at ASC")).rows);
   }
 
   async recordAudit(audit: AuditRecord): Promise<void> {
@@ -134,8 +134,8 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
     await this.withTenantRead(context.tenantId, async client => {
       if (audit.eventId) {
         const reference = await client.query<{ tenant_id: string; actor_id: string }>(
-          "SELECT tenant_id, actor_id FROM carbon_ledger_events WHERE id = $1",
-          [audit.eventId],
+          "SELECT tenant_id, actor_id FROM carbon_ledger_events WHERE tenant_id = $1 AND id = $2",
+          [context.tenantId, audit.eventId],
         );
         const row = reference.rows[0];
         if (!row) throw new Error("audit event reference not found");
