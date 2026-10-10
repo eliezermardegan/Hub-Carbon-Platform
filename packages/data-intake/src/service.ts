@@ -31,7 +31,8 @@ export class DataIntakeService {
   async ingestActivity(input: ActivityInput, context: IntakeServiceContext): Promise<IntakeResult> {
     if (input.companyId !== context.tenantId) throw new Error("activity company does not match tenant");
 
-    const requested = createActivity(input);
+    const created = createActivity(input);
+    const { factorId: _untrustedFactorId, factorVersion: _untrustedFactorVersion, ...requested } = created;
     const claim = await this.persistence.claimActivity(requested, intakePayloadHash(requested, context));
     if (claim.kind === "conflict") throw new Error("idempotency key conflict: payload differs from original intake");
     if (claim.kind === "busy") throw new Error("idempotent intake request is already processing");
@@ -44,7 +45,7 @@ export class DataIntakeService {
 
     // Reuse the first activity ID for every retry. The ledger uses that stable
     // ID as its own idempotency key, including recovery after a partial failure.
-    const { factorId: _untrustedFactorId, factorVersion: _untrustedFactorVersion, ...requestFields } = requested;
+    const requestFields = requested;
     const priorFactorId = claim.activity.factorId;
     const priorFactorVersion = claim.activity.factorVersion;
     let activity: ActivityRecord = {
