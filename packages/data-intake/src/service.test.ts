@@ -182,10 +182,12 @@ test("recovers when ledger append succeeded but final intake persistence failed"
     }
   });
   const ledger = idempotentLedger();
-  const service = new DataIntakeService(persistence, { resolve: async () => factor }, ledger.ledger);
+  let resolveCalls = 0;
+  const service = new DataIntakeService(persistence, { resolve: async () => { resolveCalls++; return factor; } }, ledger.ledger);
   await assert.rejects(service.ingestActivity(activity({ activityId: undefined }), context()), /simulated intake persistence outage/);
   const recovered = await service.ingestActivity(activity({ activityId: undefined }), context());
   assert.equal(recovered.activity.calculationStatus, "calculated");
+  assert.equal(resolveCalls, 1);
   assert.equal(ledger.calls(), 1);
   assert.equal(ledger.uniqueWrites(), 1);
   assert.equal(ledger.ids().length, 1);
