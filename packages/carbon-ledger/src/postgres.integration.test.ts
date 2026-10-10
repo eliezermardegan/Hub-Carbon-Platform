@@ -116,7 +116,7 @@ test("real PostgreSQL integration prerequisites are explicit", { skip: !enabled 
     "create policy data_intake_records_tenant_isolation on data_intake_records using (tenant_id = nullif(current_setting('app.tenant_id', true), '')) with check (tenant_id = nullif(current_setting('app.tenant_id', true), ''))",
     "drop policy if exists data_intake_activities_tenant_isolation on data_intake_activities",
     "create policy data_intake_activities_tenant_isolation on data_intake_activities using (tenant_id = nullif(current_setting('app.tenant_id', true), '')) with check (tenant_id = nullif(current_setting('app.tenant_id', true), ''))"
-  ].join("\\n"));
+  ].join(";\n"));
   psql(`do $$ begin if not exists (select from pg_roles where rolname = 'carbon_ledger_app') then create role carbon_ledger_app nologin nosuperuser nobypassrls; end if; end $$;`);
   psql("grant usage on schema public to carbon_ledger_app; grant select, insert on carbon_ledger_events, carbon_ledger_audit to carbon_ledger_app; grant select, insert, update on carbon_ledger_tenant_heads to carbon_ledger_app; grant select, insert, update on data_intake_records, data_intake_activities to carbon_ledger_app;");
   assert.equal(psql("select rolsuper || ':' || rolbypassrls from pg_roles where rolname='carbon_ledger_app'"), "false:false");
