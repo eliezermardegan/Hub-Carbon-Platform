@@ -39,7 +39,7 @@ test("RLS rejects cross-tenant inserts and append-only trigger rejects mutation"
 
 test("tenant-local setting is reset at transaction end on a reused session", { skip: !enabled }, () => {
   const result = psql(`begin; select set_config('app.tenant_id','${tenantA}',true); commit; select coalesce(nullif(current_setting('app.tenant_id',true),''),'RESET');`);
-  assert.equal(result.split("\n").at(-1), "");
+  assert.equal(result.split("\n").at(-1), "RESET");
 });
 
 test("event and audit writes roll back atomically when the transaction aborts", { skip: !enabled }, () => {
