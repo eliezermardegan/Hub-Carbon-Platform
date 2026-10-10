@@ -116,7 +116,7 @@ before update or delete on carbon_ledger_audit
 for each row execute function prevent_append_only_mutation();
 
 create or replace function guard_carbon_ledger_tenant_head()
-returns trigger language plpgsql as $
+returns trigger language plpgsql as $tag$
 begin
   if TG_OP = 'DELETE' then
     raise exception 'carbon ledger tenant head cannot be deleted';
@@ -136,7 +136,7 @@ begin
   end if;
   return NEW;
 end;
-$;
+$tag$;
 
 drop trigger if exists carbon_ledger_heads_guard on carbon_ledger_tenant_heads;
 create trigger carbon_ledger_heads_guard
