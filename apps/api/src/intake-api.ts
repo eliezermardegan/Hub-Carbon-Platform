@@ -46,7 +46,13 @@ export function createIntakeApi(deps: ApiDependencies) {
       if (error instanceof Error && error.message === "invalid_json") {
         return send(res, 400, { error: "invalid_json" });
       }
-      return send(res, 400, { error: error instanceof Error ? error.message : "invalid_request" });
+      const message = error instanceof Error ? error.message : "invalid_request";
+      if (message.startsWith("idempotency key conflict") || message.includes("already processing")) {
+        return send(res, 409, { error: message });
+      }
+      if (message === "activity company does not match tenant") return send(res, 403, { error: message });
+      if (message === "factor is not approved for import or calculation") return send(res, 422, { error: message });
+      return send(res, 400, { error: message });
     }
   });
 }
@@ -59,14 +65,18 @@ function send(res: ServerResponse, status: number, payload: unknown) {
 async function readJson(req: IncomingMessage): Promise<any> {
   return await new Promise((resolve, reject) => {
     let data = "";
+    let receivedBytes = 0;
     let settled = false;
     req.on("data", chunk => {
       if (settled) return;
-      data += chunk.toString();
-      if (Buffer.byteLength(data, "utf8") > MAX_BODY_BYTES) {
+      const text = chunk.toString();
+      receivedBytes += Buffer.byteLength(text, "utf8");
+      if (receivedBytes > MAX_BODY_BYTES) {
         settled = true;
         reject(new Error("request_body_too_large"));
+        return;
       }
+      data += text;
     });
     req.on("end", () => {
       if (settled) return;
