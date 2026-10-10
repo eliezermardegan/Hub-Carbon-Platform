@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { POSTGRES_SCHEMA } from "./persistence.js";
+import { Pool } from "pg";
+import { PostgresLedgerPersistence } from "./postgres.js";
 
 const databaseUrl = process.env.PG_INTEGRATION_URL;
 const enabled = Boolean(databaseUrl);
@@ -76,4 +78,19 @@ test("hash chain fields and tenant head remain explicit database values", { skip
 test("PostgreSQL bigint preserves values above JavaScript safe integer range", { skip: !enabled }, () => {
   psql(`insert into carbon_ledger_events(id,tenant_id,actor_id,event_type,sequence,recorded_at,methodology_version,event_hash) values ('dddddddd-dddd-4ddd-8ddd-dddddddddddd','${tenantB}','${actor}','entry',9007199254740992,now(),'test','bigint-boundary');`);
   assert.equal(psql("select sequence::text from carbon_ledger_events where id='dddddddd-dddd-4ddd-8ddd-dddddddddddd'"), "9007199254740992");
+});
+
+
+test("PostgresLedgerPersistence executes tenant-scoped reads through the pg driver", { skip: !enabled }, async () => {
+  const pool = new Pool({ connectionString: databaseUrl, max: 2 });
+  try {
+    const persistence = new PostgresLedgerPersistence(pool, {
+      getTrustedTenantContext: () => ({ tenantId: tenantA, actorId: actor }),
+    });
+    assert.deepEqual(await persistence.listEvents(tenantA), []);
+    assert.equal(await persistence.getHead(tenantA), null);
+    await assert.rejects(() => persistence.listEvents(tenantB), /does not match trusted context/);
+  } finally {
+    await pool.end();
+  }
 });
