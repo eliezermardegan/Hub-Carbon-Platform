@@ -16,7 +16,7 @@ const factor:any = {
   id:"f1", version:"1", status:"verified", name:"test", scope:2, category:"electricity",
   activityUnit:"kWh", factorUnit:"kgCO2e/kWh", value:.4, dataQuality:"high",
   provenance:{sourceName:"test",sourceUrl:"https://example.invalid",license:"test",
-    attributionRequired:false,redistributionAllowed:false,retrievedAt:"2026-01-01"}
+    attributionRequired:false,redistributionAllowed:true,retrievedAt:"2026-01-01"}
 };
 
 test("ingests, calculates and sends activity to ledger", async () => {
