@@ -32,9 +32,12 @@ function canonicalize(value: unknown): string {
   return "{" + Object.keys(object).sort().map(k => JSON.stringify(k) + ":" + canonicalize(object[k])).join(",") + "}";
 }
 
-export function intakePayloadHash(value: ActivityRecord): string {
+export function intakePayloadHash(
+  value: ActivityRecord,
+  identity?: { tenantId: string; actorId: string; methodologyVersion: string },
+): string {
   const { activityId: _activityId, calculationStatus: _status, factorId: _factorId, factorVersion: _factorVersion, ...request } = value;
-  return createHash("sha256").update(canonicalize(request), "utf8").digest("hex");
+  return createHash("sha256").update(canonicalize({ request, identity: identity ?? null }), "utf8").digest("hex");
 }
 
 interface ActivityClaimRecord {
