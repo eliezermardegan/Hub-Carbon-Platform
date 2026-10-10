@@ -20,7 +20,7 @@ const factor: any = {
     sourceName: "Synthetic test fixture", sourceUrl: "https://example.invalid/factor", sourceVersion: "fixture-v1",
     license: "test-only", legalBasis: "Synthetic test fixture; not production evidence",
     attributionRequired: false, redistributionAllowed: true,
-    sourceContentSha256: "a".repeat(64), retrievedAt: "2026-01-01T00:00:00Z",
+    sourceContentSha256: "ba7b10b5afb62f2852574f5969acaa64ba71d4f062ac2224f90f9ec23435fdaa", retrievedAt: "2026-01-01T00:00:00Z",
     geography: "TEST", originalUnit: "kWh", normalizedUnit: "kWh",
     transformation: "Synthetic fixture; no transformation", evidenceRef: "test://factor/f1"
   }
