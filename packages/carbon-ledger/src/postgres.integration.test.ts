@@ -41,3 +41,35 @@ test("tenant-local setting is reset at transaction end on a reused session", { s
   const result = psql(`begin; select set_config('app.tenant_id','${tenantA}',true); commit; select coalesce(nullif(current_setting('app.tenant_id',true),''),'RESET');`);
   assert.equal(result.split("\n").at(-1), "");
 });
+
+test("event and audit writes roll back atomically when the transaction aborts", { skip: !enabled }, () => {
+  const id = "66666666-6666-4666-8666-666666666666";
+  psql(`begin; insert into carbon_ledger_events(id,tenant_id,actor_id,event_type,sequence,recorded_at,methodology_version,event_hash) values ('${id}','${tenantA}','${actor}','entry',8,now(),'test','rollback-hash'); insert into carbon_ledger_audit(id,tenant_id,actor_id,action,event_id,recorded_at) values ('77777777-7777-4777-8777-777777777777','${tenantA}','${actor}','append','${id}',now()); rollback;`);
+  assert.equal(psql(`select count(*) from carbon_ledger_events where id='${id}'`), "0");
+  assert.equal(psql("select count(*) from carbon_ledger_audit where id='77777777-7777-4777-8777-777777777777'"), "0");
+});
+
+test("tenant sequence uniqueness rejects duplicate sequence values", { skip: !enabled }, () => {
+  assert.throws(() => psql(`insert into carbon_ledger_events(id,tenant_id,actor_id,event_type,sequence,recorded_at,methodology_version,event_hash) values ('88888888-8888-4888-8888-888888888888','${tenantA}','${actor}','entry',1,now(),'test','duplicate-sequence');`), /unique constraint/i);
+});
+
+test("idempotency keys are unique within a tenant", { skip: !enabled }, () => {
+  psql(`insert into carbon_ledger_events(id,tenant_id,actor_id,event_type,sequence,recorded_at,methodology_version,event_hash,idempotency_key,idempotency_payload_hash) values ('99999999-9999-4999-8999-999999999999','${tenantA}','${actor}','entry',9,now(),'test','idem-a','integration-idem','payload-a');`);
+  assert.throws(() => psql(`insert into carbon_ledger_events(id,tenant_id,actor_id,event_type,sequence,recorded_at,methodology_version,event_hash,idempotency_key,idempotency_payload_hash) values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','${tenantA}','${actor}','entry',10,now(),'test','idem-b','integration-idem','payload-b');`), /unique constraint/i);
+});
+
+test("audit rows are append-only", { skip: !enabled }, () => {
+  psql(`insert into carbon_ledger_audit(id,tenant_id,actor_id,action,recorded_at) values ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','${tenantA}','${actor}','verification',now());`);
+  assert.throws(() => psql("update carbon_ledger_audit set action='append' where id='cccccccc-cccc-4ccc-8ccc-cccccccccccc';"), /append-only|carbon ledger/i);
+});
+
+test("hash chain fields and tenant head remain explicit database values", { skip: !enabled }, () => {
+  psql(`insert into carbon_ledger_tenant_heads(tenant_id,head_event_hash) values ('${tenantA}','head-hash-test') on conflict (tenant_id) do update set head_event_hash=excluded.head_event_hash;`);
+  assert.equal(psql(`select head_event_hash from carbon_ledger_tenant_heads where tenant_id='${tenantA}'`), "head-hash-test");
+  assert.equal(psql(`select count(*) from carbon_ledger_events where tenant_id='${tenantA}' and (event_hash is null or methodology_version is null)`), "0");
+});
+
+test("PostgreSQL bigint preserves values above JavaScript safe integer range", { skip: !enabled }, () => {
+  psql(`insert into carbon_ledger_events(id,tenant_id,actor_id,event_type,sequence,recorded_at,methodology_version,event_hash) values ('dddddddd-dddd-4ddd-8ddd-dddddddddddd','${tenantB}','${actor}','entry',9007199254740992,now(),'test','bigint-boundary');`);
+  assert.equal(psql("select sequence::text from carbon_ledger_events where id='dddddddd-dddd-4ddd-8ddd-dddddddddddd'"), "9007199254740992");
+});
