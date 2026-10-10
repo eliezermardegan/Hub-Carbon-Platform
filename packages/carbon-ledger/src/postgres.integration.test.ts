@@ -49,6 +49,33 @@ function psql(sql: string): string {
   return execFileSync("psql", [databaseUrl, "-X", "-v", "ON_ERROR_STOP=1", "-A", "-t", "-c", sql], { encoding: "utf8" }).trim();
 }
 
+function asApplicationRolePool(pool: Pool): PgPool {
+  return {
+    query: pool.query.bind(pool) as PgPool["query"],
+    connect: async () => {
+      const client = await pool.connect();
+      try {
+        await client.query("SET ROLE carbon_ledger_app");
+      } catch (error) {
+        client.release();
+        throw error;
+      }
+      let released = false;
+      return {
+        query: client.query.bind(client) as PgPool["query"],
+        release: () => {
+          if (released) return;
+          released = true;
+          void client.query("RESET ROLE").then(
+            () => client.release(),
+            () => client.release(),
+          );
+        },
+      };
+    },
+  } as unknown as PgPool;
+}
+
 test("real PostgreSQL integration prerequisites are explicit", { skip: !enabled }, () => {
   assert.match(psql("select version()"), /^PostgreSQL /);
   psql("drop schema public cascade; create schema public; grant all on schema public to public;");
@@ -114,6 +141,7 @@ test("tenant head policy blocks cross-tenant changes and invalid or destructive 
   const crossTenant = psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_tenant_heads set head_event_hash='hash-a' where tenant_id='${tenantB}'; select count(*) from carbon_ledger_tenant_heads where tenant_id='${tenantB}' and head_event_hash is not distinct from '${before}'; commit;`);
   assert.equal(crossTenant.split("\n").filter(x => /^\d+$/.test(x)).at(-1), "0", "tenant A must not see tenant B head under RLS");
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_tenant_heads set head_event_hash='not-an-event-hash' where tenant_id='${tenantA}'; commit;`), /must reference an existing tenant event/i);
+  assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_tenant_heads set tenant_id='${tenantB}' where tenant_id='${tenantA}'; commit;`), /tenant_id is immutable/i);
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); delete from carbon_ledger_tenant_heads where tenant_id='${tenantA}'; commit;`), /permission denied|cannot be deleted/i);
 });
 
@@ -169,7 +197,7 @@ test("pooled adapter reads do not leak tenant context across reused connections"
 test("concurrent appends serialize tenant sequence and head updates", { skip: !enabled }, async () => {
   const pool = new Pool({ connectionString: databaseUrl, max: 4 });
   try {
-    const persistence = new PostgresLedgerPersistence(pool as unknown as PgPool, {
+    const persistence = new PostgresLedgerPersistence(asApplicationRolePool(pool), {
       getTrustedTenantContext: () => ({ tenantId: tenantD, actorId: actor }),
     });
     const first = persistedEvent();
@@ -196,7 +224,7 @@ test("concurrent appends serialize tenant sequence and head updates", { skip: !e
 test("application idempotency replays equivalent payload and rejects conflicting payload", { skip: !enabled }, async () => {
   const pool = new Pool({ connectionString: databaseUrl, max: 2 });
   try {
-    const persistence = new PostgresLedgerPersistence(pool as unknown as PgPool, {
+    const persistence = new PostgresLedgerPersistence(asApplicationRolePool(pool), {
       getTrustedTenantContext: () => ({ tenantId: tenantE, actorId: actor }),
     });
     const event = persistedEvent({
