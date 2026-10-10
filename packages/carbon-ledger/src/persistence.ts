@@ -115,6 +115,34 @@ create trigger carbon_ledger_audit_no_update
 before update or delete on carbon_ledger_audit
 for each row execute function prevent_append_only_mutation();
 
+create or replace function guard_carbon_ledger_tenant_head()
+returns trigger language plpgsql as $
+begin
+  if TG_OP = 'DELETE' then
+    raise exception 'carbon ledger tenant head cannot be deleted';
+  end if;
+  if NEW.tenant_id <> OLD.tenant_id then
+    raise exception 'carbon ledger tenant head tenant_id is immutable';
+  end if;
+  if NEW.head_event_hash is null then
+    if exists (select 1 from carbon_ledger_events where tenant_id = OLD.tenant_id) then
+      raise exception 'carbon ledger tenant head cannot be cleared while events exist';
+    end if;
+  elsif not exists (
+    select 1 from carbon_ledger_events
+    where tenant_id = NEW.tenant_id and event_hash = NEW.head_event_hash
+  ) then
+    raise exception 'carbon ledger tenant head must reference an existing tenant event';
+  end if;
+  return NEW;
+end;
+$;
+
+drop trigger if exists carbon_ledger_heads_guard on carbon_ledger_tenant_heads;
+create trigger carbon_ledger_heads_guard
+before update or delete on carbon_ledger_tenant_heads
+for each row execute function guard_carbon_ledger_tenant_head();
+
 alter table carbon_ledger_events enable row level security;
 alter table carbon_ledger_audit enable row level security;
 alter table carbon_ledger_tenant_heads enable row level security;
