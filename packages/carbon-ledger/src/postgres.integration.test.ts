@@ -89,6 +89,7 @@ test("PostgresLedgerPersistence executes tenant-scoped reads through the pg driv
       getTrustedTenantContext: () => ({ tenantId: tenantC, actorId: actor }),
     });
     assert.deepEqual(await persistence.listEvents(tenantC), []);
+    assert.deepEqual(await persistence.listAudit(tenantC), []);
     assert.equal(await persistence.getHead(tenantC), null);
     await assert.rejects(() => persistence.listEvents(tenantB), /does not match trusted context/);
   } finally {
