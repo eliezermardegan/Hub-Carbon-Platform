@@ -8,7 +8,7 @@
 **Working branch:** `hardening/ip-supply-chain-governance`  
 **Pull request:** [#21 — chore: add IP, provenance and supply-chain governance](https://github.com/eliezermardegan/Hub-Carbon-Platform/pull/21)  
 **PR state at last review:** Open, draft, unmerged  
-**Repository HEAD before this status update:** `502fe9dfd6dafb04f4850d1bd36795c45cf96462` (this tracker update creates a subsequent documentation commit)  
+**Repository HEAD before this status update:** `f7ec3f503d3ab56b1d4182d8840f9b68c1c62862` (intake hardening and focused regression tests added; current CI pending)  
 **Production changes authorised:** No  
 **Independent validation completed:** No
 
@@ -89,7 +89,7 @@ The current work is on `hardening/ip-supply-chain-governance`, PR #21. The PR is
 | P0 — Security baseline | IN PROGRESS | Supply-chain workflows and governance documentation have been added. | Evidence-based review of application/authentication, API/object access, secrets, encryption, logs, rate limiting, monitoring and deployment configuration remains necessary. |
 | P0 — GDPR/data residency | NOT STARTED / evidence not recorded | No complete, verified map of actual processing locations, subprocessors, retention and deletion was recorded in this tracker at last review. | Map actual systems and contracts; identify gaps and owners. No residency or GDPR-compliance claim without evidence. |
 | P1 — Factor provenance | IN PROGRESS; two candidates blocked | ADEME V23.6 and UK DESNZ 2026 candidate records have been explicitly marked `blocked`; missing source-artifact SHA-256 values are intentionally empty; redistribution is disabled. Default factor lookup excludes blocked factors. | Obtain and verify the exact official artefacts and rows, compute hashes from the actual bytes, verify the value/unit/methodology/licence, and only then consider promotion. |
-| P1 — Data intake and factor gating | IMPLEMENTED — UNVERIFIED | Data intake now rejects factors that are not approved for import/calculation. Tests were added to assert blocked factors do not reach ledger append. | Confirm typecheck/test results and review persistence side effects on rejection; ensure blocked factor metadata cannot be used through alternate paths. |
+| P1 — Data intake and factor gating | IMPLEMENTED — UNVERIFIED (new regression tests pending CI) | Follow-up commit `40d804d` persists explicit `not_ready` state for unresolved inputs and persists `blocked` plus factor/version metadata before rejecting a non-importable factor. Commit `f7ec3f5` adds tests that assert these states are persisted and no ledger append occurs. | Confirm CI on latest documentation/code head; review idempotent retry semantics and persistence/ledger failure recovery in a dedicated follow-up. |
 | P1 — Regulatory engine | NOT STARTED / evidence not recorded | No completed, source-verified rule-set inventory is recorded here. | Inventory each implemented jurisdictional rule and validate official sources, versions, effective dates, tests and limitations. |
 | P1 — Backups/recovery/operations | NOT STARTED / evidence not recorded | No verified restore exercise, RPO/RTO evidence or full production-observability review is recorded here. | Review infrastructure without changing production; document recovery objectives and run authorised isolated restore tests where available. |
 | P1 — Licence and supply-chain controls | IN PROGRESS | Source matrix, third-party notices, provenance policy and security/dependency workflows are present in the PR description; workflow outcomes must be checked per latest head. | Review exact introduced/changed components, SBOM and licence scan results, plus any administrative settings that need owner action. |
@@ -595,3 +595,16 @@ The PR description links the source matrix, data-provenance policy, regulatory s
 - **Independent technical/security reviewer: UNASSIGNED / PENDING.** CODEOWNERS currently maps critical paths only to the PR author. The request and review scope are posted in PR #21; reviewer must be independent of the implementer and record APPROVE or REQUEST_CHANGES with rationale.
 - Target production database role/RLS verification, repository administration controls (issues #22/#23), deployment identity/authorization, data residency/GDPR mapping, backup/restore, and wider regulatory/integration assessments remain separate follow-on work.
 - Keep PR #21 in draft and issue #27 open until the final documentation commit's checks pass and the independent review outcome is recorded. Passing CI is not approval to merge or deploy.
+
+
+## 24. Data-intake factor gate follow-up — 2026-10-10
+
+### Finding and change
+A review of `packages/data-intake/src/service.ts` found that activity was persisted before factor eligibility was known. For a blocked factor, the service could throw after persisting an activity with an earlier `ready` status. This could leave an operationally misleading record even though no calculation or ledger append was allowed.
+
+- Commit `40d804d070aaaf32046a799857b46964ac052aef`: moved persistence to the known workflow decision; unresolved inputs/factor absence/missing quantity persist as `not_ready`; a non-importable factor persists factor ID/version and `blocked` status before returning the expected rejection; only an importable factor reaches calculation and ledger append.
+- Commit `f7ec3f503d3ab56b1d4182d8840f9b68c1c62862`: adds regression tests for unresolved and blocked factors, asserting persisted state and zero ledger appends.
+- Security invariant: blocked/unresolved data is not sent to the Carbon Ledger and is not silently treated as zero emissions.
+- Validation status at time of writing: implementation and tests committed; CI on the updated head is required before marking the change TESTED.
+- Remaining design follow-up: explicitly specify and test idempotent retry behavior, plus failure/recovery semantics if persistence or ledger append fails mid-workflow. This change does not claim a distributed transaction across intake persistence and the ledger.
+- PR #21 remains draft. Independent review is still unassigned; this is an implementer-owned follow-up, not a substitute for independent review.
