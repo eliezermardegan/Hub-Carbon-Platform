@@ -20,7 +20,7 @@ export const DATA_INTAKE_POSTGRES_SCHEMA = [
 "create policy data_intake_records_tenant_isolation on data_intake_records using (tenant_id = nullif(current_setting('app.tenant_id', true), '')) with check (tenant_id = nullif(current_setting('app.tenant_id', true), ''))",
 "drop policy if exists data_intake_activities_tenant_isolation on data_intake_activities",
 "create policy data_intake_activities_tenant_isolation on data_intake_activities using (tenant_id = nullif(current_setting('app.tenant_id', true), '')) with check (tenant_id = nullif(current_setting('app.tenant_id', true), ''))"
-].join("\n");
+].join(";\n");
 
 function decode<T>(value: T | string): T { return (typeof value === "string" ? JSON.parse(value) : value) as T; }
 
