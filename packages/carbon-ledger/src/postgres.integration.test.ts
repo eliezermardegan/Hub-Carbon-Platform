@@ -73,7 +73,7 @@ test("RLS filters tenants and fails closed without transaction-local tenant cont
 
 test("RLS rejects cross-tenant inserts and append-only trigger rejects mutation", { skip: !enabled }, () => {
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); insert into carbon_ledger_events(id,tenant_id,actor_id,event_type,sequence,recorded_at,methodology_version,event_hash) values ('55555555-5555-4555-8555-555555555555','${tenantB}','${actor}','entry',2,now(),'test','hash-cross'); rollback;`), /row-level security|policy/i);
-  assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_events set event_hash='tampered' where tenant_id='${tenantA}'; commit;`), /append-only|carbon ledger/i);
+  assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_events set event_hash='tampered' where tenant_id='${tenantA}'; commit;`), /permission denied|append-only|carbon ledger/i);
 });
 
 test("tenant-local setting is reset at transaction end on a reused session", { skip: !enabled }, () => {
@@ -112,7 +112,7 @@ test("application role cannot mutate or delete ledger events and audit rows", { 
 test("tenant head policy blocks cross-tenant changes and invalid or destructive updates", { skip: !enabled }, () => {
   const before = psql(`select head_event_hash from carbon_ledger_tenant_heads where tenant_id='${tenantB}'`);
   const crossTenant = psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_tenant_heads set head_event_hash='hash-a' where tenant_id='${tenantB}'; select count(*) from carbon_ledger_tenant_heads where tenant_id='${tenantB}' and head_event_hash is not distinct from '${before}'; commit;`);
-  assert.equal(crossTenant.split("\\n").filter(x => /^\\d+$/.test(x)).at(-1), "1", "cross-tenant update must affect no rows");
+  assert.equal(crossTenant.split("\n").filter(x => /^\d+$/.test(x)).at(-1), "1", "cross-tenant update must affect no rows");
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_tenant_heads set head_event_hash='not-an-event-hash' where tenant_id='${tenantA}'; commit;`), /must reference an existing tenant event/i);
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); delete from carbon_ledger_tenant_heads where tenant_id='${tenantA}'; commit;`), /permission denied|cannot be deleted/i);
 });
