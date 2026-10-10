@@ -1,7 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createIntakeApi } from "./intake-api.ts";
-import { DataIntakeService } from "../../../packages/data-intake/src/service.ts";
+import * as dataIntakeServiceModule from "../../../packages/data-intake/src/service.ts";
+
+const serviceNamespace = dataIntakeServiceModule as unknown as Record<string, unknown>;
+const serviceDefault = serviceNamespace.default;
+const serviceDefaultRecord = serviceDefault !== null &&
+  (typeof serviceDefault === "object" || typeof serviceDefault === "function")
+  ? serviceDefault as Record<string, unknown>
+  : undefined;
+const DataIntakeService = (
+  serviceNamespace.DataIntakeService ??
+  serviceDefaultRecord?.DataIntakeService ??
+  (typeof serviceDefault === "function" ? serviceDefault : undefined)
+) as typeof import("../../../packages/data-intake/src/service.js").DataIntakeService;
+if (typeof DataIntakeService !== "function") {
+  throw new Error("Data Intake runtime export 'DataIntakeService' is unavailable");
+}
 
 async function withServer(handler: Parameters<typeof createIntakeApi>[0], run: (baseUrl: string) => Promise<void>) {
   const server = createIntakeApi(handler);
