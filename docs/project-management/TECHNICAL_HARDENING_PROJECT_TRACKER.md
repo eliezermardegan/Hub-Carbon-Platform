@@ -3,7 +3,7 @@
 
 **Document type:** Living project-management record  
 **Status:** In progress — not approved for production  
-**Last status review:** 2026-10-09  
+**Last status review:** 2026-10-10  
 **Repository:** `eliezermardegan/Hub-Carbon-Platform`  
 **Working branch:** `hardening/ip-supply-chain-governance`  
 **Pull request:** [#21 — chore: add IP, provenance and supply-chain governance](https://github.com/eliezermardegan/Hub-Carbon-Platform/pull/21)  
@@ -300,14 +300,90 @@ Add new findings rather than overloading an existing row. When closing a finding
 
 Do not pre-fill the declaration as complete. It must be completed only by the person who actually finishes the final scheduled task and can attest to the evidence.
 
-## 11. Change log
+
+
+## 14. CCCA report alignment and required addenda
+
+**Source reviewed:** *Carbon Accounting: Recommendations for Data Management in UK Manufacturing*, AI Data Team / Digital Catapult, March 2025 (the user-provided CCCA report). The report's summary recommendations are in its opening summary (PDF pages 4–6); relevant detailed discussion includes data quality and lineage (approximately pp. 56–69), e-liability and data sharing/interoperability (pp. 69–76), calculation approaches (pp. 77–79), and privacy/security/cyberthreats (pp. 82–85). Page references refer to the report's printed page numbers where shown.
+
+**Interpretation rule:** This is a requirements-alignment assessment, not a claim of conformity with the report or proof that any feature is operational. “Already contemplated” means the existing hardening plan addresses the topic at a design/acceptance-criteria level. “Partially evidenced” means some relevant code or documentation is known to exist, but the complete capability has not been verified. “Addendum required” means a specific requirement must now be tracked with explicit acceptance evidence.
+
+### 14.1 Recommendation-to-project traceability matrix
+
+| CCCA recommendation / report theme | Existing project coverage | Assessment now | Addendum / acceptance evidence required |
+|---|---|---|---|
+| Standardised carbon-data formats, open standards, APIs, transparent methods, portability and avoidance of vendor lock-in (summary; pp. 71–76) | Existing plan covers intake/integrations, regulatory sources and traceability, but no approved cross-platform schema/API contract is evidenced in this tracker. | PARTIAL — design intent only; interoperability not demonstrated. | CCCA-01: define versioned canonical carbon-data schema, documented API/import-export contract, units and scope/boundary semantics, compatibility/version policy, and portable export. Test round-trip export/import and schema validation. Assess JSON/XML and XBRL where suitable; do not claim standards compliance without a selected specification and tests. |
+| Credible verification, validation, and consistent verification practices (summary; pp. 66–70) | Ledger integrity, audit coherence and factor provenance are covered by P0/P1 criteria. A complete independent carbon-data verification workflow is not evidenced. | PARTIAL — technical integrity is not the same as emissions verification. | CCCA-02: define validation vs verification, evidence requirements, review roles, sampling/exception workflow, correction/recalculation process and an independent review record. Any training/qualification requirement is a governance proposal, not a product feature unless adopted by the project owner. |
+| Trusted data sharing: disclose only required data, secure APIs, encryption, role-based access, and “disclose once” approach (summary; pp. 71–76, 82–85) | P0 security/privacy criteria cover tenant isolation, encryption review, secrets and data flows; no selective disclosure or consent/authorisation model is evidenced. | PARTIAL — baseline security review remains open; cross-organisation sharing is not demonstrated. | CCCA-03: threat-model external sharing; define recipient, purpose, minimum fields, authorisation, tenant boundary, expiry/revocation, audit trail, encryption in transit/at rest and redaction. Add negative tests proving one customer/partner cannot access unshared evidence. Assess “disclose once” only where lawful, technically feasible and consent/contract boundaries permit. |
+| Standardised emission-factor datasets and filling Scope 3 data gaps (summary; P1-A) | Provenance fields, source matrix, licence gate and blocked unverified factor candidates are already in scope. | PARTIAL — governance is present; candidate source artefacts and rights remain blockers. | CCCA-04: maintain a reviewed dataset coverage/gap register by geography, period, scope/category and source quality. Verify source rows, factor method, units, version and licence before enabling. Record explicit fallback policy and label secondary estimates; never invent missing factors or hashes. |
+| Integrating siloed sources and automating collection/processing into governed storage (summary; pp. 48–55) | P1-B defines source-to-ledger intake and discusses CSV/spreadsheets and future integrations. Broad end-to-end ERP, utility, procurement, fleet and supplier connectors are not proven operational. | PARTIAL — intake guardrails are in progress; integrations must be evidenced individually. | CCCA-05: create an integration inventory with source/system, connector mode, data owner, frequency, credentials model, failure/retry, duplicate/idempotency handling, reconciliation, audit and test environment. Label each connector manual, prototype, tested or operational based on evidence. |
+| Data governance, metadata, cleaning, normalisation, validation, quality dimensions and lineage (pp. 52–69) | Factor provenance, deterministic calculation traceability and intake validation are included in the existing plan. A platform-wide metadata/quality model is not yet evidenced. | PARTIAL — factor metadata is narrower than end-to-end carbon-data quality and lineage. | CCCA-06: define minimum metadata for source, owner, timestamp/period, geography, unit, scope/category, method, evidence, transformations, quality flags, uncertainty, approval and lineage. Define completeness, validity, consistency, timeliness and source reliability checks with thresholds, quarantine/remediation and tests. |
+| Transparent calculation approaches: activity-based, spend-based and average-data methods; improve primary data over time (pp. 77–79 and summary) | P1-A requires deterministic calculation and explicit missing data/estimates; it does not yet establish that all three methods are implemented. | ADDENDUM REQUIRED — method coverage is not verified. | CCCA-07: explicitly model calculation method and input-data class (primary activity, spend-based secondary, average-based secondary), factor basis, currency/year where relevant, confidence/quality and reason for fallback. Prefer activity data when fit for purpose; permit spend/average methods with visible limitations and a migration path to primary data. Add tests and prevent silent method switching or missing-to-zero conversion. |
+| Scope boundaries, organisational boundaries, comparability and double-counting controls (report themes on scope definitions, data management and verification) | The current plan covers Scope 1/2/3 and tenant/audit consistency at a broad level; a complete boundary and cross-value-chain duplicate policy is not evidenced. | PARTIAL — explicit rules and tests needed. | CCCA-08: document organisational/operational boundaries, reporting period, Scope 2 market/location-based distinctions where applicable, Scope 3 category mapping, ownership of supplier/product emissions and double-counting rules. Add boundary and duplicate-detection tests; preserve source claims and avoid implying that all value-chain double counting can be eliminated automatically. |
+| E-liability, product carbon footprints and supply-chain product carbon data exchange (pp. 69–76) | Append-only ledger and factor/evidence traceability provide useful foundations, but they do not implement product-level inherited emissions or a product-carbon exchange protocol by themselves. | ADDENDUM REQUIRED — not evidenced as implemented. | CCCA-09: assess product/lot-level carbon records, inherited supplier emissions, allocation rules, functional unit, lifecycle boundary, provenance, versioning, corrections and double-counting prevention. Select and evaluate a relevant exchange model/specification (for example, the report's referenced PACT/WBCSD work) before implementation; require interoperability and conformance tests. Keep this separate from claims that blockchain or a hash chain alone verifies truth. |
+| Financial reporting alignment and XBRL (pp. 73–74) | Regulatory engine and reporting traceability are in scope, but a financial reporting/XBRL interface is not evidenced. | ADDENDUM REQUIRED — discovery before implementation. | CCCA-10: assess whether XBRL or another reporting format is appropriate for target users/regimes; map carbon metrics to financial/reporting concepts, identify taxonomy/version and validation rules, and produce a sample export with reconciliation tests before claiming support. |
+| Privacy, security and cyberthreats (pp. 82–85) | P0 security and GDPR/data-residency assessments require a real data-flow map, access review and evidence. | IN PROGRESS / EVIDENCE MISSING. | CCCA-11: include supplier-confidential data, commercially sensitive activity/spend data, personal data in invoices/transport records and shared product data in the threat/privacy assessment. Define minimisation, access/retention/deletion, processor transfers, logs/redaction, incident response and data-sharing risks; link findings to P0-B/P0-C. |
+| Shared trust framework / interoperable “digital spine” and clear roles (pp. 74–76) | Governance roles and the security baseline exist in the project plan; no multi-party trust framework or common exchange layer is evidenced. | ADDENDUM REQUIRED — architectural option to assess, not an assumed implementation. | CCCA-12: document the trust model for data producers, platform, verifiers and consumers; define identity, permissions, responsibility, schema/version negotiation, auditability and failure handling. Decide whether a shared interoperability layer is needed based on concrete use cases; avoid building a distributed architecture without validated need. |
+
+### 14.2 New CCCA addendum work items and owners
+
+All owners remain **UNASSIGNED** until explicitly allocated. The work items below are requirements and assessment tasks; they do not assert that the corresponding capability exists.
+
+| ID | Priority | Work item | Acceptance gate | Initial status |
+|---|---|---|---|---|
+| CCCA-01 | P1 | Canonical schema, open formats, versioning, API and portability | Published schema/API contract, examples, validation and round-trip tests; selected formats/specifications documented | NOT STARTED |
+| CCCA-02 | P1 | Data validation and independent verification workflow | Roles, evidence, exceptions, corrections and review trail documented and tested | NOT STARTED |
+| CCCA-03 | P0/P1 | Secure selective data sharing | Threat model, minimum-disclosure design, authorisation model and cross-tenant negative tests; linked to P0-B/P0-C | NOT STARTED |
+| CCCA-04 | P1 | Factor dataset coverage and Scope 3 gap register | Coverage/gap inventory and source/licence evidence; unverified sources remain blocked | IN PROGRESS — linked to P1-A |
+| CCCA-05 | P1 | Data-source and connector maturity inventory | Each integration classified by actual evidence, with failure/idempotency/reconciliation tests | IN PROGRESS — linked to P1-B |
+| CCCA-06 | P1 | End-to-end metadata, quality and lineage model | Data dictionary, quality rules, lineage fields and validation/quarantine tests | NOT STARTED |
+| CCCA-07 | P1 | Explicit activity/spend/average calculation methods | Method-labelled calculation trace, fallback policy, quality/confidence metadata and reproducibility tests | NOT STARTED |
+| CCCA-08 | P1 | Boundaries, Scope mapping and double-counting controls | Documented boundary/mapping policy and regression tests; known limitations explicit | NOT STARTED |
+| CCCA-09 | P1 / architecture decision | Product carbon footprint, inherited emissions and exchange protocol | Use cases, allocation/boundary model and protocol decision; implementation only after review | NOT STARTED |
+| CCCA-10 | P2 / discovery | Financial reporting and XBRL assessment | Documented applicability decision and sample export/reconciliation if adopted | NOT STARTED |
+| CCCA-11 | P0 | Extend security/privacy review to shared carbon data | Findings linked to P0-B/P0-C, with severity, owner, remediation and evidence | IN PROGRESS — linked to P0-B/P0-C |
+| CCCA-12 | P2 / architecture decision | Multi-party trust framework / interoperability layer | Trust boundaries, roles and exchange use cases documented; explicit adopt/defer decision | NOT STARTED |
+
+### 14.3 Relationship to the existing hardening plan
+
+The CCCA addenda extend the existing plan; they do not replace or relax the P0 release gates.
+
+- P0 ledger atomicity, RLS/tenant isolation and real-PostgreSQL PG-01–PG-12 tests remain mandatory.
+- P0 security/privacy review must include the additional data-sharing and supplier/product data risks identified above.
+- P1 factor provenance and intake gating remain mandatory; CCCA coverage does not permit an unverified factor to be enabled.
+- Interoperability, XBRL, e-liability/product exchange and a digital-spine-style layer require explicit architecture decisions and scoped acceptance criteria before implementation is claimed.
+- No compliance, verification, interoperability, connector, standard-conformance or product-carbon-exchange claim may be made without corresponding implementation and test evidence.
+- Where the report describes a policy, ecosystem or regulatory recommendation rather than a software feature, record it as a governance/dependency decision rather than pretending it can be solved by code alone.
+
+### 14.4 CCCA evidence register
+
+For each CCCA item, the task owner must add links to the design decision, relevant files, test runs, evidence artefacts and independent review. Until those are recorded, the status must remain NOT STARTED, IN PROGRESS, BLOCKED or IMPLEMENTED — UNVERIFIED as appropriate.
+
+| ID | Design / implementation references | Test / evidence link | Reviewer | Status / last update |
+|---|---|---|---|---|
+| CCCA-01 | To be identified after repository inspection | Not recorded | UNASSIGNED | NOT STARTED |
+| CCCA-02 | To be identified after repository inspection | Not recorded | UNASSIGNED | NOT STARTED |
+| CCCA-03 | Link to P0-B/P0-C and sharing design when available | Not recorded | UNASSIGNED | NOT STARTED |
+| CCCA-04 | P1-A, factor registry and legal source matrix | Existing source-gating evidence requires CI confirmation | UNASSIGNED | IN PROGRESS |
+| CCCA-05 | P1-B and data-intake package | Connector-specific end-to-end evidence not recorded | UNASSIGNED | IN PROGRESS |
+| CCCA-06 | P1-A/P1-B and evidence/lineage design when available | Not recorded | UNASSIGNED | NOT STARTED |
+| CCCA-07 | P1-A and calculation core | Method coverage not recorded | UNASSIGNED | NOT STARTED |
+| CCCA-08 | Regulatory/calculation design when identified | Not recorded | UNASSIGNED | NOT STARTED |
+| CCCA-09 | Architecture decision required | Not recorded | UNASSIGNED | NOT STARTED |
+| CCCA-10 | Reporting architecture when identified | Not recorded | UNASSIGNED | NOT STARTED |
+| CCCA-11 | P0-B/P0-C | Security/privacy review not yet recorded as complete | UNASSIGNED | IN PROGRESS |
+| CCCA-12 | Architecture decision required | Not recorded | UNASSIGNED | NOT STARTED |
+
+
+## 15. Change log
 
 | Date (UTC) | Change | Evidence / commit | Updated by |
 |---|---|---|---|
 | 2026-10-09 | Initial living project tracker established from the approved Technical Implementation and Security Hardening Brief and observed branch/PR state. Records P0/P1 work breakdown, acceptance criteria, current blockers, evidence rules and mandatory final-task handover. | This document; branch `hardening/ip-supply-chain-governance`; PR #21 | Project implementation session — individual task owner not assigned in this document |
+| 2026-10-10 | Added traceability matrix against the user-provided Digital Catapult CCCA report and 12 explicit addenda covering open formats/APIs, verification, selective sharing, factor gaps, integrations, quality/lineage, calculation methods, boundaries/double counting, product carbon exchange/e-liability, XBRL, security/privacy and trust framework. Statuses distinguish existing design coverage from verified implementation. | CCCA report summary pp. 4–6 and detailed sections pp. 56–85; section 14 of this tracker | Project implementation session — independent review not yet performed |
 | YYYY-MM-DD | Describe the code/documentation change, status transition, test evidence and blocker/closure. | Commit SHA / CI run / evidence link | Name |
 
-## 12. How this document must be maintained
+## 16. How this document must be maintained
 
 - Update the relevant task row and findings register in the same change set as substantive implementation work, or in the immediately following documentation commit.
 - Every status transition must include a date and evidence link in the change log.
@@ -318,6 +394,6 @@ Do not pre-fill the declaration as complete. It must be completed only by the pe
 - Once the final declaration is submitted, preserve it in the PR discussion and link it here. The project approver then decides whether the work may enter independent validation.
 - No task in this tracker grants permission to merge, deploy, or alter production.
 
-## 13. Final acceptance principle
+## 17. Final acceptance principle
 
 The programme is ready to be handed over for independent validation only when the evidence is complete and all exceptions are explicit. It is not automatically production-ready because code was committed, documentation was written, a subset of tests passed, or a CI workflow was green. P0 remains incomplete until the real PostgreSQL integration criteria are demonstrated. Any unresolved security, privacy, licensing, factor provenance, integration, regulatory, backup or operational risk must remain visible to the reviewer and approver.
