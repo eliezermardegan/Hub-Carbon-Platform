@@ -18,6 +18,7 @@ DECLARE
   v_policy_check text;
   v_normalized_qual text;
   v_normalized_check text;
+  v_normalized_expected text;
 BEGIN
   SELECT * INTO v_app FROM pg_roles WHERE rolname = 'carbon_ledger_app';
   IF NOT FOUND THEN
@@ -44,6 +45,32 @@ BEGIN
      NOT has_schema_privilege('carbon_ledger_runtime', 'public', 'USAGE') OR
      has_schema_privilege('carbon_ledger_runtime', 'public', 'CREATE') THEN
     RAISE EXCEPTION 'security audit failed: application roles need public schema USAGE and must not have CREATE';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_namespace n
+    CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl, acldefault('n', n.nspowner))) acl
+    WHERE n.nspname = 'public' AND acl.grantee = 0 AND acl.privilege_type = 'CREATE'
+  ) THEN
+    RAISE EXCEPTION 'security audit failed: PUBLIC has CREATE privilege on schema public';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) acl
+    WHERE n.nspname = 'public' AND c.relkind IN ('r','p')
+      AND c.relname IN (
+        'carbon_ledger_events','carbon_ledger_audit','carbon_ledger_tenant_heads',
+        'data_intake_records','data_intake_activities','carbon_companies',
+        'carbon_reporting_periods','carbon_sites','carbon_data_sources',
+        'carbon_source_documents','carbon_evidence','carbon_activity_records'
+      )
+      AND acl.grantee = 0
+      AND acl.privilege_type IN ('SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER')
+  ) THEN
+    RAISE EXCEPTION 'security audit failed: PUBLIC has direct privileges on protected tenant tables';
   END IF;
 
   IF EXISTS (SELECT 1 FROM pg_auth_members WHERE member = v_app.oid) THEN
@@ -110,9 +137,10 @@ BEGIN
       AND policyname = v_object.policy_name;
     v_normalized_qual := regexp_replace(lower(coalesce(v_policy_qual, '')), '[[:space:]()]', '', 'g');
     v_normalized_check := regexp_replace(lower(coalesce(v_policy_check, '')), '[[:space:]()]', '', 'g');
+    v_normalized_expected := regexp_replace(lower(v_object.expected_expression), '[[:space:]()]', '', 'g');
     IF NOT FOUND OR v_policy_qual IS NULL OR v_policy_check IS NULL OR
-       v_normalized_qual IS DISTINCT FROM v_object.expected_expression OR
-       v_normalized_check IS DISTINCT FROM v_object.expected_expression THEN
+       v_normalized_qual IS DISTINCT FROM v_normalized_expected OR
+       v_normalized_check IS DISTINCT FROM v_normalized_expected THEN
       RAISE EXCEPTION 'security audit failed: policy % on public.% does not exactly match the expected tenant equality in both USING and WITH CHECK (USING %, CHECK %)', v_object.policy_name, v_object.table_name, v_normalized_qual, v_normalized_check;
     END IF;
   END LOOP;
