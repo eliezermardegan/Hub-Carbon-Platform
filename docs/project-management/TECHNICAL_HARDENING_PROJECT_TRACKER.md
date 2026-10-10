@@ -8,7 +8,7 @@
 **Working branch:** `hardening/ip-supply-chain-governance`  
 **Pull request:** [#21 — chore: add IP, provenance and supply-chain governance](https://github.com/eliezermardegan/Hub-Carbon-Platform/pull/21)  
 **PR state at last review:** Open, draft, unmerged  
-**Repository HEAD observed before this tracker metadata update:** `7fbfa80d0e70938cdd5731b9ca8ffcaaabdbffc2`  
+**Repository HEAD before this status update:** `502fe9dfd6dafb04f4850d1bd36795c45cf96462` (this tracker update creates a subsequent documentation commit)  
 **Production changes authorised:** No  
 **Independent validation completed:** No
 
@@ -84,8 +84,8 @@ The current work is on `hardening/ip-supply-chain-governance`, PR #21. The PR is
 
 | Workstream | Current status | Evidence / current finding | Remaining gate |
 |---|---|---|---|
-| P0 — PostgreSQL ledger and tenant isolation | IN PROGRESS | The PR describes trusted server-side tenant context, transaction-local tenant settings, RLS hardening, append-only protections, idempotency payload comparison, audit-context checks and safe `bigint` handling. Unit and mock coverage exists. | Run the required suite against a disposable real PostgreSQL instance; verify role privileges, pooling, concurrency and rollback against the actual schema/driver. |
-| P0 — Typecheck and repository CI | IN PROGRESS / TEST FAILURES OBSERVED | On the observed PR run, `npm run typecheck` passed but `npm test` failed: 58 passed, 4 failed out of 62. Failures: golden end-to-end calculation; data-intake factor approval; ADEME provenance wording assertion; EU CBAM end-to-end calculation. | Fix or explicitly adjudicate each regression, then obtain a fresh passing run on the exact latest head. This unit-test run does not exercise real PostgreSQL. |
+| P0 — PostgreSQL ledger and tenant isolation | TESTED — EVIDENCE RECORDED; independent review pending | CI #173 recorded 83/83 tests on PostgreSQL 16.15; the same suite passed again on synchronized head `502fe9dfd6dafb04f4850d1bd36795c45cf96462` in CI #178 (83 passed, 0 failed, 0 skipped). Coverage includes effective app-role grants/RLS, pooled tenant-context isolation, concurrent append/head consistency, rollback, idempotency replay/conflict, audit identity, hash-chain tampering and bigint boundaries. | Independent security review; verify actual deployment role/schema before production. Concurrency test is a bounded race, not sustained load/soak. |
+| P0 — Typecheck and repository CI | TESTED — EVIDENCE RECORDED | The earlier 4-of-62 failures are retained in Actions history and were triaged/corrected; final synchronized-head CI #178 passed `npm ci`, `npm run typecheck`, and `npm test` with PostgreSQL 16.15 (83 passed, 0 failed, 0 skipped). Supply Chain Security #98 and Factor Provenance Gate #93 also passed on the same SHA. | Re-run checks for subsequent documentation commits; independent review remains a separate gate. |
 | P0 — Security baseline | IN PROGRESS | Supply-chain workflows and governance documentation have been added. | Evidence-based review of application/authentication, API/object access, secrets, encryption, logs, rate limiting, monitoring and deployment configuration remains necessary. |
 | P0 — GDPR/data residency | NOT STARTED / evidence not recorded | No complete, verified map of actual processing locations, subprocessors, retention and deletion was recorded in this tracker at last review. | Map actual systems and contracts; identify gaps and owners. No residency or GDPR-compliance claim without evidence. |
 | P1 — Factor provenance | IN PROGRESS; two candidates blocked | ADEME V23.6 and UK DESNZ 2026 candidate records have been explicitly marked `blocked`; missing source-artifact SHA-256 values are intentionally empty; redistribution is disabled. Default factor lookup excludes blocked factors. | Obtain and verify the exact official artefacts and rows, compute hashes from the actual bytes, verify the value/unit/methodology/licence, and only then consider promotion. |
@@ -118,8 +118,8 @@ Update each task row with an owner, status, date, commit/PR evidence, test evide
 - Real PostgreSQL tests pass for all 12 scenarios listed in Section 7.
 
 **Current owner:** UNASSIGNED  
-**Current status:** IN PROGRESS  
-**Blocker:** real PostgreSQL integration execution and database-role verification not yet evidenced.
+**Current status:** TESTED — EVIDENCE RECORDED; independent review pending  
+**Remaining gate:** independent review and deployment-specific verification of the target database role/schema; no production readiness claim.
 
 ### P0-B — Security baseline / OWASP ASVS 5.0.0
 **Acceptance criteria**
@@ -261,8 +261,8 @@ Add a row for every finding; do not remove closed findings from history.
 
 | ID | Severity / priority | Finding or blocker | Evidence | Owner | Remediation / required action | Status |
 |---|---|---|---|---|---|---|
-| B-001 | P0 / critical gate | Real PostgreSQL integration suite and actual database-role/RLS verification not yet evidenced | PR #21 validation notes; no disposable PostgreSQL run recorded here | UNASSIGNED | Provision/use an isolated test database and execute PG-01–PG-12; record output | BLOCKED |
-| B-002 | P0 | Latest CI result must be confirmed after the latest changes | [GitHub Actions](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions) | UNASSIGNED | Inspect final runs for current head; fix failures and rerun | IN PROGRESS |
+| B-001 | P0 / critical gate | Independent review and target-deployment RLS/role verification remain outstanding; disposable PostgreSQL CI evidence now recorded | [CI #178](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38054833929), 83/83 on PostgreSQL 16.15; security matrix and PR #21 review request | UNASSIGNED | Obtain independent review of RLS/grants/triggers/context/provenance and verify target deployment role/schema before production | IN PROGRESS |
+| B-002 | P0 | CI must be revalidated after each new documentation commit | [CI #178](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38054833929), [Security #98](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38054833967), [Provenance #93](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38054833872) passed on `502fe9dfd6dafb04f4850d1bd36795c45cf96462` | UNASSIGNED | Confirm workflows on the final tracker/status documentation commit before closing issue #27 | IN PROGRESS |
 | B-003 | P1 | ADEME factor candidate source artefact, exact record, value and licence applicability not fully verified | Factor module and source matrix mark candidate blocked | UNASSIGNED | Obtain official artefact; verify record/value/licence; compute actual SHA-256; review before unblocking | BLOCKED |
 | B-004 | P1 | UK DESNZ 2026 candidate source artefact/updated row and factor breakdown not fully verified | Factor module and source matrix mark candidate blocked | UNASSIGNED | Obtain exact official updated flat file; verify row/value/gas breakdown/licence; compute actual SHA-256; review before unblocking | BLOCKED |
 | B-005 | P0 | Full application security and GDPR/data-flow evidence not recorded in this tracker | No completed evidence register linked here | UNASSIGNED | Perform code/configuration and actual processor/data-location assessment | NOT STARTED |
@@ -571,3 +571,27 @@ The existing CCCA alignment above captures the report's main strategic recommend
 ## 23. Final acceptance principle
 
 The programme is ready to be handed over for independent validation only when the evidence is complete and all exceptions are explicit. It is not automatically production-ready because code was committed, documentation was written, a subset of tests passed, or a CI workflow was green. P0 remains incomplete until the real PostgreSQL integration criteria are demonstrated. Any unresolved security, privacy, licensing, factor provenance, integration, regulatory, backup or operational risk must remain visible to the reviewer and approver.
+
+
+## 21. Final CI and independent-review handoff — 2026-10-10
+
+### Latest synchronized implementation head
+- Branch `hardening/ip-supply-chain-governance`; PR #21 remains OPEN / DRAFT / UNMERGED.
+- Merge commit synced with `main`: `502fe9dfd6dafb04f4850d1bd36795c45cf96462`; zero commits behind `main`.
+- [Test CI #178](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38054833929): PASS; `npm ci`, `npm run typecheck`, `npm test`; PostgreSQL 16.15; 83 passed, 0 failed, 0 skipped.
+- [Supply Chain Security #98](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38054833967): PASS.
+- [Factor Provenance Gate #93](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38054833872): PASS.
+- Test coverage includes RLS/cross-tenant behavior, effective application-role grants, append-only guards, tenant-head constraints, transaction rollback, single-connection pool context switching, bounded concurrent append/sequence/head checks, idempotent replay and conflict rejection, audit identity, hash-chain tamper/link/sequence checks and PostgreSQL bigint safety.
+- This concurrency evidence is a bounded race test; no sustained throughput/latency/soak benchmark is claimed.
+- Detailed immutable code-to-test mapping: [Security Evidence Matrix](https://github.com/eliezermardegan/Hub-Carbon-Platform/blob/502fe9dfd6dafb04f4850d1bd36795c45cf96462/docs/security/persistent-ledger-security-evidence.md).
+
+### Corrected CI failures retained as history
+The PR description contains a table linking the failed CI runs to the diagnosed causes and corresponding corrections (fixture isolation, missing SQL parameter array, idempotency/audit fixture collisions, PL/pgSQL delimiter, RLS/grant expectation, and `psql` boolean representation). Failed run logs remain preserved; the final green runs above are the acceptance evidence. Tests were corrected to reflect intended security behavior rather than weakening the controls.
+
+### Source/legal recommendations incorporated and limitations
+The PR description links the source matrix, data-provenance policy, regulatory source register, third-party notices, ADR-001 regulatory boundary and test-only ADEME/DESNZ fixtures. Exact artifact licensing/hash verification is deliberately not invented: ADEME and DESNZ production candidates remain blocked pending exact source artifact/row/value/licence verification. The CBAM worked example is regression-test provenance, not the legal instrument. No claim of complete regulatory compliance, GDPR compliance, independent penetration testing, production configuration validation, or tamper-proof storage is made.
+
+### Remaining release gate
+- **Independent technical/security reviewer: UNASSIGNED / PENDING.** CODEOWNERS currently maps critical paths only to the PR author. The request and review scope are posted in PR #21; reviewer must be independent of the implementer and record APPROVE or REQUEST_CHANGES with rationale.
+- Target production database role/RLS verification, repository administration controls (issues #22/#23), deployment identity/authorization, data residency/GDPR mapping, backup/restore, and wider regulatory/integration assessments remain separate follow-on work.
+- Keep PR #21 in draft and issue #27 open until the final documentation commit's checks pass and the independent review outcome is recorded. Passing CI is not approval to merge or deploy.
