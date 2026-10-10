@@ -66,7 +66,6 @@ async function readJson(req: IncomingMessage): Promise<any> {
       if (Buffer.byteLength(data, "utf8") > MAX_BODY_BYTES) {
         settled = true;
         reject(new Error("request_body_too_large"));
-        req.destroy();
       }
     });
     req.on("end", () => {
