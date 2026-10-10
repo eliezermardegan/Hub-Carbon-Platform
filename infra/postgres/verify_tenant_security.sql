@@ -16,6 +16,8 @@ DECLARE
   v_policy_count integer;
   v_policy_qual text;
   v_policy_check text;
+  v_normalized_qual text;
+  v_normalized_check text;
 BEGIN
   SELECT * INTO v_app FROM pg_roles WHERE rolname = 'carbon_ledger_app';
   IF NOT FOUND THEN
@@ -65,19 +67,19 @@ BEGIN
 
   FOR v_object IN
     SELECT * FROM (VALUES
-      ('carbon_ledger_events', 'carbon_ledger_events_tenant_isolation', 'tenant_id'),
-      ('carbon_ledger_audit', 'carbon_ledger_audit_tenant_isolation', 'tenant_id'),
-      ('carbon_ledger_tenant_heads', 'carbon_ledger_heads_tenant_isolation', 'tenant_id'),
-      ('data_intake_records', 'data_intake_records_tenant_isolation', 'tenant_id'),
-      ('data_intake_activities', 'data_intake_activities_tenant_isolation', 'tenant_id'),
-      ('carbon_companies', 'carbon_companies_tenant', 'company_id'),
-      ('carbon_reporting_periods', 'carbon_reporting_periods_tenant', 'company_id'),
-      ('carbon_sites', 'carbon_sites_tenant', 'company_id'),
-      ('carbon_data_sources', 'carbon_data_sources_tenant', 'company_id'),
-      ('carbon_source_documents', 'carbon_source_documents_tenant', 'company_id'),
-      ('carbon_evidence', 'carbon_evidence_tenant', 'company_id'),
-      ('carbon_activity_records', 'carbon_activity_records_tenant', 'company_id')
-    ) AS expected(table_name, policy_name, tenant_column)
+      ('carbon_ledger_events', 'carbon_ledger_events_tenant_isolation', 'tenant_id', $exp$tenant_id=nullif(current_setting('app.tenant_id'::text,true),''::text)::uuid$exp$),
+      ('carbon_ledger_audit', 'carbon_ledger_audit_tenant_isolation', 'tenant_id', $exp$tenant_id=nullif(current_setting('app.tenant_id'::text,true),''::text)::uuid$exp$),
+      ('carbon_ledger_tenant_heads', 'carbon_ledger_heads_tenant_isolation', 'tenant_id', $exp$tenant_id=nullif(current_setting('app.tenant_id'::text,true),''::text)::uuid$exp$),
+      ('data_intake_records', 'data_intake_records_tenant_isolation', 'tenant_id', $exp$tenant_id=nullif(current_setting('app.tenant_id'::text,true),''::text)$exp$),
+      ('data_intake_activities', 'data_intake_activities_tenant_isolation', 'tenant_id', $exp$tenant_id=nullif(current_setting('app.tenant_id'::text,true),''::text)$exp$),
+      ('carbon_companies', 'carbon_companies_tenant', 'company_id', $exp$company_id::text=current_setting('app.tenant_id'::text,true)$exp$),
+      ('carbon_reporting_periods', 'carbon_reporting_periods_tenant', 'company_id', $exp$company_id::text=current_setting('app.tenant_id'::text,true)$exp$),
+      ('carbon_sites', 'carbon_sites_tenant', 'company_id', $exp$company_id::text=current_setting('app.tenant_id'::text,true)$exp$),
+      ('carbon_data_sources', 'carbon_data_sources_tenant', 'company_id', $exp$company_id::text=current_setting('app.tenant_id'::text,true)$exp$),
+      ('carbon_source_documents', 'carbon_source_documents_tenant', 'company_id', $exp$company_id::text=current_setting('app.tenant_id'::text,true)$exp$),
+      ('carbon_evidence', 'carbon_evidence_tenant', 'company_id', $exp$company_id::text=current_setting('app.tenant_id'::text,true)$exp$),
+      ('carbon_activity_records', 'carbon_activity_records_tenant', 'company_id', $exp$company_id::text=current_setting('app.tenant_id'::text,true)$exp$)
+    ) AS expected(table_name, policy_name, tenant_column, expected_expression)
   LOOP
     SELECT c.relrowsecurity, c.relforcerowsecurity, pg_get_userbyid(c.relowner)
       INTO v_rls, v_force_rls, v_owner
@@ -106,14 +108,12 @@ BEGIN
     FROM pg_policies
     WHERE schemaname = 'public' AND tablename = v_object.table_name
       AND policyname = v_object.policy_name;
+    v_normalized_qual := regexp_replace(lower(coalesce(v_policy_qual, '')), '[[:space:]()]', '', 'g');
+    v_normalized_check := regexp_replace(lower(coalesce(v_policy_check, '')), '[[:space:]()]', '', 'g');
     IF NOT FOUND OR v_policy_qual IS NULL OR v_policy_check IS NULL OR
-       position('current_setting' IN v_policy_qual) = 0 OR
-       position('app.tenant_id' IN v_policy_qual) = 0 OR
-       position(v_object.tenant_column IN v_policy_qual) = 0 OR
-       position('current_setting' IN v_policy_check) = 0 OR
-       position('app.tenant_id' IN v_policy_check) = 0 OR
-       position(v_object.tenant_column IN v_policy_check) = 0 THEN
-      RAISE EXCEPTION 'security audit failed: policy % on public.% must check the tenant column in both USING and WITH CHECK', v_object.policy_name, v_object.table_name;
+       v_normalized_qual IS DISTINCT FROM v_object.expected_expression OR
+       v_normalized_check IS DISTINCT FROM v_object.expected_expression THEN
+      RAISE EXCEPTION 'security audit failed: policy % on public.% does not exactly match the expected tenant equality in both USING and WITH CHECK (USING %, CHECK %)', v_object.policy_name, v_object.table_name, v_normalized_qual, v_normalized_check;
     END IF;
   END LOOP;
 
@@ -139,6 +139,70 @@ BEGIN
       END IF;
     END LOOP;
   END LOOP;
+
+  -- The login principal must have no direct/effective data-table privileges.
+  -- Runtime code must SET ROLE carbon_ledger_app before accessing protected tables.
+  FOR v_object IN
+    SELECT table_name FROM (VALUES
+      ('carbon_ledger_events'), ('carbon_ledger_audit'), ('carbon_ledger_tenant_heads'),
+      ('data_intake_records'), ('data_intake_activities'),
+      ('carbon_companies'), ('carbon_reporting_periods'), ('carbon_sites'),
+      ('carbon_data_sources'), ('carbon_source_documents'), ('carbon_evidence'),
+      ('carbon_activity_records')
+    ) AS protected(table_name)
+  LOOP
+    IF has_table_privilege('carbon_ledger_runtime', 'public.' || v_object.table_name, 'SELECT')
+       OR has_any_column_privilege('carbon_ledger_runtime', 'public.' || v_object.table_name, 'SELECT')
+       OR has_table_privilege('carbon_ledger_runtime', 'public.' || v_object.table_name, 'INSERT')
+       OR has_any_column_privilege('carbon_ledger_runtime', 'public.' || v_object.table_name, 'INSERT')
+       OR has_table_privilege('carbon_ledger_runtime', 'public.' || v_object.table_name, 'UPDATE')
+       OR has_any_column_privilege('carbon_ledger_runtime', 'public.' || v_object.table_name, 'UPDATE')
+       OR has_table_privilege('carbon_ledger_runtime', 'public.' || v_object.table_name, 'DELETE')
+       OR has_table_privilege('carbon_ledger_runtime', 'public.' || v_object.table_name, 'TRUNCATE')
+       OR has_table_privilege('carbon_ledger_runtime', 'public.' || v_object.table_name, 'REFERENCES')
+       OR has_any_column_privilege('carbon_ledger_runtime', 'public.' || v_object.table_name, 'REFERENCES')
+       OR has_table_privilege('carbon_ledger_runtime', 'public.' || v_object.table_name, 'TRIGGER') THEN
+      RAISE EXCEPTION 'security audit failed: login role carbon_ledger_runtime has direct/effective privileges on public.% before SET ROLE', v_object.table_name;
+    END IF;
+  END LOOP;
+
+  -- These legacy carbon_* tables have no executable adapter in this branch yet.
+  -- Until a reviewed adapter and explicit grant contract exist, neither app nor
+  -- runtime principal should be able to access them.
+  FOR v_object IN
+    SELECT table_name FROM (VALUES
+      ('carbon_companies'), ('carbon_reporting_periods'), ('carbon_sites'),
+      ('carbon_data_sources'), ('carbon_source_documents'), ('carbon_evidence'),
+      ('carbon_activity_records')
+    ) AS legacy(table_name)
+  LOOP
+    IF has_table_privilege('carbon_ledger_app', 'public.' || v_object.table_name, 'SELECT')
+       OR has_any_column_privilege('carbon_ledger_app', 'public.' || v_object.table_name, 'SELECT')
+       OR has_table_privilege('carbon_ledger_app', 'public.' || v_object.table_name, 'INSERT')
+       OR has_any_column_privilege('carbon_ledger_app', 'public.' || v_object.table_name, 'INSERT')
+       OR has_table_privilege('carbon_ledger_app', 'public.' || v_object.table_name, 'UPDATE')
+       OR has_any_column_privilege('carbon_ledger_app', 'public.' || v_object.table_name, 'UPDATE')
+       OR has_table_privilege('carbon_ledger_app', 'public.' || v_object.table_name, 'DELETE')
+       OR has_table_privilege('carbon_ledger_app', 'public.' || v_object.table_name, 'TRUNCATE')
+       OR has_table_privilege('carbon_ledger_app', 'public.' || v_object.table_name, 'REFERENCES')
+       OR has_any_column_privilege('carbon_ledger_app', 'public.' || v_object.table_name, 'REFERENCES')
+       OR has_table_privilege('carbon_ledger_app', 'public.' || v_object.table_name, 'TRIGGER') THEN
+      RAISE EXCEPTION 'security audit failed: carbon_ledger_app has privileges on unimplemented legacy table public.%', v_object.table_name;
+    END IF;
+  END LOOP;
+
+  -- Unexpected DEFAULT TABLE PRIVILEGES can silently widen access after future migrations.
+  IF EXISTS (
+    SELECT 1
+    FROM pg_default_acl d
+    CROSS JOIN LATERAL aclexplode(d.defaclacl) acl
+    WHERE d.defaclobjtype = 'r'
+      AND (d.defaclnamespace = 0 OR d.defaclnamespace = 'public'::regnamespace)
+      AND acl.grantee IN (0, v_app.oid, v_runtime.oid)
+      AND acl.privilege_type IN ('SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER')
+  ) THEN
+    RAISE EXCEPTION 'security audit failed: PUBLIC or application roles have unexpected default table privileges';
+  END IF;
 END
 $verify_tenant_security$;
 
@@ -163,6 +227,26 @@ WHERE n.nspname = 'public'
     'carbon_source_documents','carbon_evidence','carbon_activity_records'
   )
 ORDER BY c.relname;
+
+SELECT c.relname AS table_name,
+       COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
+       acl.privilege_type, acl.is_grantable
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) acl
+LEFT JOIN pg_roles grantee ON grantee.oid = acl.grantee
+WHERE n.nspname = 'public' AND c.relkind IN ('r','p')
+  AND c.relname IN (
+    'carbon_ledger_events','carbon_ledger_audit','carbon_ledger_tenant_heads',
+    'data_intake_records','data_intake_activities','carbon_companies',
+    'carbon_reporting_periods','carbon_sites','carbon_data_sources',
+    'carbon_source_documents','carbon_evidence','carbon_activity_records'
+  )
+  AND (acl.grantee = 0 OR acl.grantee IN (
+    (SELECT oid FROM pg_roles WHERE rolname = 'carbon_ledger_app'),
+    (SELECT oid FROM pg_roles WHERE rolname = 'carbon_ledger_runtime')
+  ))
+ORDER BY c.relname, grantee.rolname, acl.privilege_type;
 
 SELECT pg_get_userbyid(m.member) AS login_role,
        pg_get_userbyid(m.roleid) AS granted_role,
