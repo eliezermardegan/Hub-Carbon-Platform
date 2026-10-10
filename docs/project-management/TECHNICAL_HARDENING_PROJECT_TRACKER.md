@@ -448,16 +448,41 @@ For each CCCA item, the task owner must add links to the design decision, releva
 - Repository artefacts inspected: `packages/carbon-core/README.md`, `packages/data-intake/README.md`, `packages/factor-registry/README.md`, `packages/regulatory-engine/README.md`, `docs/architecture/persistent-carbon-ledger.md`, and this tracker.
 - Evidence limitation: this was a repository/documentation fit-gap inspection, not a full code audit, live-system test, legal review, assurance engagement, or independent validation. The listed capabilities must be verified against implementation, tests and deployment configuration before being marked complete.
 
-## 19. Change log
+
+
+## 19. Additional operational controls from the detailed CCCA report
+
+The existing CCCA alignment above captures the report's main strategic recommendations. This section records additional operational controls identified by reviewing the detailed sections on responsibility for data collection, automation, cleaning, quality, validation, and reporting (printed pages 47–69 and 88–91; PDF pages may differ).
+
+| ID | Report finding / risk | Proposed addition | Acceptance evidence | Initial status |
+|---|---|---|---|---|
+| CCCA-13 | Data collection responsibilities are distributed across sustainability, operations, finance, procurement, product, HR and IT; unclear ownership reduces data quality. | Define a data responsibility matrix by source and emission category: accountable owner, contributor, reviewer, system of record, cadence and escalation path. Include supplier-submitted data and smaller organisations with combined roles. | Approved RACI/ownership matrix; each required data field/category has an accountable owner or explicit gap; access and approval tests where supported. | NOT STARTED |
+| CCCA-14 | Manual collection and annual-only review can delay detection of errors and trends. | Define collection cadence by source and materiality, plus monthly/quarterly monitoring where appropriate. Provide period completeness indicators and late/missing-source alerts; annual reporting remains a reporting cycle, not the only control cycle. | Cadence policy, completeness dashboard/API output, tests for missing/late periods and evidence that alerts do not create or change emissions automatically. | NOT STARTED |
+| CCCA-15 | Incoming data may contain missing fields, duplicates, outliers, inconsistent units, naming or time resolution. | Implement a governed data-quality pipeline: preserve raw input, normalise to canonical units/names/time periods, detect duplicates and outliers, quarantine suspect records, and record every transformation and human disposition. Never silently discard, impute or overwrite evidence. | Fixtures for duplicates, outliers, missing values, unit conversion and period alignment; before/after lineage; reviewable quarantine and correction events. | NOT STARTED |
+| CCCA-16 | Quality is multidimensional; a single generic “valid” flag cannot explain fitness for use. | Define quality dimensions and fit-for-purpose rules: accuracy/source reliability, completeness, uniqueness, validity, consistency, timeliness, accessibility and security. Record quality flags and limitations at source/activity/calculation/report level. | Published data-quality rubric, configurable thresholds by data class, reproducible scoring/explanations and tests that low-quality data is flagged rather than silently promoted. | NOT STARTED |
+| CCCA-17 | Integrations and AI-based extraction can move or transform data without proving that meaning and metadata were preserved. | Add transformation controls: schema and unit validation at each boundary, record-count/reconciliation checks, metadata preservation, provenance of extraction, confidence where machine extraction is used, and human-review thresholds based on materiality/risk. | Contract/integration tests proving no unexplained record loss/duplication, field and unit preservation, extraction confidence/evidence linkage, and reviewed exception handling. | NOT STARTED |
+| CCCA-18 | Reporting outputs need periodic review and evidence that results remain consistent and useful for decisions. | Add period-over-period trend review and auditable report snapshots, including completeness/quality warnings, material changes, unresolved estimates and reviewer disposition. Link to NOV-03/NOV-09 and CCCA-02/CCCA-06 rather than building duplicate workflows. | Reproducible report snapshot and reconciliation tests; review record for material anomalies; historical reports remain reproducible after factor or boundary changes. | NOT STARTED |
+
+### 19.1 Implementation guardrails
+
+- Prefer explicit, explainable deterministic checks before introducing AI/ML. AI may suggest classifications, duplicates or anomalies, but must not silently change the ledger or fill missing values as facts.
+- Keep original source files and raw extracted values, subject to retention/privacy policy, so every normalised value can be traced back to its origin.
+- Data-quality scores must disclose their dimensions and cannot be presented as independent assurance or a probability that an emission figure is correct unless empirically validated for that interpretation.
+- Define monitoring cadence by source and materiality; do not impose real-time collection where source systems or use cases do not justify the cost.
+- Treat “single source of truth” as a governed logical record and lineage model, not necessarily a mandate to copy all sensitive source data into one physical database.
+- Reuse existing CCCA/NOV tasks where possible. These additions should clarify acceptance criteria, not create duplicate implementations.
+
+## 20. Change log
 
 | Date (UTC) | Change | Evidence / commit | Updated by |
 |---|---|---|---|
 | 2026-10-09 | Initial living project tracker established from the approved Technical Implementation and Security Hardening Brief and observed branch/PR state. Records P0/P1 work breakdown, acceptance criteria, current blockers, evidence rules and mandatory final-task handover. | This document; branch `hardening/ip-supply-chain-governance`; PR #21 | Project implementation session — individual task owner not assigned in this document |
 | 2026-10-10 | Added traceability matrix against the user-provided Digital Catapult CCCA report and 12 explicit addenda covering open formats/APIs, verification, selective sharing, factor gaps, integrations, quality/lineage, calculation methods, boundaries/double counting, product carbon exchange/e-liability, XBRL, security/privacy and trust framework. Statuses distinguish existing design coverage from verified implementation. | CCCA report summary pp. 4–6 and detailed sections pp. 56–85; section 14 of this tracker | Project implementation session — independent review not yet performed |
 | 2026-10-10 | Added a repository/documentation fit-gap assessment of Novisto's enterprise carbon accounting guide, 12 proposed capability items, safeguards, crosswalk to CCCA tasks and source/evidence limitations. Updated recorded branch head. | https://novisto.com/resources/carbon-accounting-guide; repository files listed in section 18; commit to be recorded after this change | Project implementation session — independent review not yet performed |
+| 2026-10-10 | Expanded the detailed CCCA report fit-gap with six operational addenda covering data ownership, collection cadence, cleaning/quarantine, quality dimensions, transformation controls and auditable trend/report review. | CCCA report printed pp. 47–69 and 88–91; section 19 of this tracker | Project implementation session — independent review not yet performed |
 | YYYY-MM-DD | Describe the code/documentation change, status transition, test evidence and blocker/closure. | Commit SHA / CI run / evidence link | Name |
 
-## 20. How this document must be maintained
+## 21. How this document must be maintained
 
 - Update the relevant task row and findings register in the same change set as substantive implementation work, or in the immediately following documentation commit.
 - Every status transition must include a date and evidence link in the change log.
@@ -468,6 +493,6 @@ For each CCCA item, the task owner must add links to the design decision, releva
 - Once the final declaration is submitted, preserve it in the PR discussion and link it here. The project approver then decides whether the work may enter independent validation.
 - No task in this tracker grants permission to merge, deploy, or alter production.
 
-## 21. Final acceptance principle
+## 22. Final acceptance principle
 
 The programme is ready to be handed over for independent validation only when the evidence is complete and all exceptions are explicit. It is not automatically production-ready because code was committed, documentation was written, a subset of tests passed, or a CI workflow was green. P0 remains incomplete until the real PostgreSQL integration criteria are demonstrated. Any unresolved security, privacy, licensing, factor provenance, integration, regulatory, backup or operational risk must remain visible to the reviewer and approver.
