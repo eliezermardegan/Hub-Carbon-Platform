@@ -57,7 +57,7 @@ This change is a hardened API boundary, not a complete authentication implementa
 - API tests verify caller identity headers are ignored, trusted context is passed, missing identity is rejected, and malformed JSON is handled.
 - Factor registry tests require verified status and complete provenance for importability.
 
-Latest CI is pending for the current code/doc head. Do not label these changes TESTED until Test CI, Supply Chain Security and Factor Provenance Gate all pass on the exact same HEAD.
+Code head 3a02d2b7081b93e9bdd920b7be2db7f396e88745 passed Test CI #226 (98/98), Security #146 and Provenance #141. Documentation head 74f5e00e8cd0aecb484e78ec9f40167f13a02dfb also passed Test CI #227 (98/98), Security #147 and Provenance #142. This review-document update is a subsequent commit and requires its own exact-head checks; the latest run links are maintained in PR #21 and Issue #27.
 
 ## 7. Outstanding work
 
@@ -87,3 +87,8 @@ Exact code head 3a02d2b7081b93e9bdd920b7be2db7f396e88745 passed:
 The ledger domain now compares semantic payload fingerprints even when an event is already present in its in-memory idempotency cache. Data Intake's partial-failure recovery checks for a committed ledger event before re-resolving the factor and verifies identity, methodology, factor snapshot, activity dimensions and evidence IDs. Tests also ensure untrusted factor IDs are removed before claim creation.
 
 The above evidence applies to the code head, not the documentation commit created from it. Fresh checks are required for the resulting documentation head. Durable intake persistence, a real PostgreSQL process-restart recovery test, and production authentication/authorization/MFA remain outstanding.
+
+
+## 10. Documentation evidence update — 2026-10-10
+
+The review document and related evidence files at head 74f5e00e8cd0aecb484e78ec9f40167f13a02dfb passed [Test CI #227](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058675707) (98/98, PostgreSQL 16.15), [Supply Chain Security #147](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058675686) and [Factor Provenance Gate #142](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058675454). This subsequent evidence-register commit requires its own fresh checks. PR #21 and Issue #27 carry the latest exact-head links.
