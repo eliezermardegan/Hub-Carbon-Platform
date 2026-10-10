@@ -139,12 +139,10 @@ test("pooled adapter reads do not leak tenant context across reused connections"
     assert.equal((await persistence.listEvents(tenantA)).length, 1);
     activeTenant = tenantC;
     assert.deepEqual(await persistence.listEvents(tenantC), []);
+    assert.deepEqual(await persistence.listAudit(tenantC), []);
     activeTenant = tenantA;
     assert.equal((await persistence.listEvents(tenantA)).length, 1);
-    assert.deepEqual(await persistence.listAudit(tenantC).catch(error => {
-      assert.match(String(error), /does not match trusted context/);
-      return [];
-    }), []);
+    assert.equal((await persistence.listAudit(tenantA)).length, 1);
   } finally {
     await pool.end();
   }
