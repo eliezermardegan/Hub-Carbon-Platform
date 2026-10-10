@@ -125,7 +125,7 @@ export class PostgresLedgerPersistence implements LedgerPersistence {
   }
 
   async listAudit(tenantId: string): Promise<AuditRecord[]> {
-    return this.withTenantRead(tenantId, async client => (await client.query<AuditRecord>("SELECT id, tenant_id as \"tenantId\", actor_id as \"actorId\", action, event_id as \"eventId\", recorded_at as \"recordedAt\", metadata FROM carbon_ledger_audit WHERE tenant_id = $1 ORDER BY recorded_at ASC")).rows);
+    return this.withTenantRead(tenantId, async client => (await client.query<AuditRecord>("SELECT id, tenant_id as \"tenantId\", actor_id as \"actorId\", action, event_id as \"eventId\", recorded_at as \"recordedAt\", metadata FROM carbon_ledger_audit WHERE tenant_id = $1 ORDER BY recorded_at ASC", [tenantId])).rows);
   }
 
   async recordAudit(audit: AuditRecord): Promise<void> {
