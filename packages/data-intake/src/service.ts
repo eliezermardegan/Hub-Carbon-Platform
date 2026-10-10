@@ -45,14 +45,55 @@ export class DataIntakeService {
     // Reuse the first activity ID for every retry. The ledger uses that stable
     // ID as its own idempotency key, including recovery after a partial failure.
     const { factorId: _untrustedFactorId, factorVersion: _untrustedFactorVersion, ...requestFields } = requested;
+    const priorFactorId = claim.activity.factorId;
+    const priorFactorVersion = claim.activity.factorVersion;
     let activity: ActivityRecord = {
       ...requestFields,
       activityId: claim.activity.activityId,
       calculationStatus: "processing",
+      ...(priorFactorId && priorFactorVersion ? { factorId: priorFactorId, factorVersion: priorFactorVersion } : {}),
     };
     let terminal = false;
 
     try {
+      if (priorFactorId && priorFactorVersion) {
+        const committed = await this.ledger.findByIdempotencyKey(context.tenantId, activity.activityId);
+        if (committed) {
+          const quantity = activity.normalizedQuantity ?? activity.quantity;
+          const category = activity.scope3Category ? String(activity.scope3Category) : activity.activityType;
+          const expectedEvidenceIds = activity.evidenceIds;
+          const committedEvidenceIds = (committed.evidence ?? []).map(item => item.id);
+          const matches =
+            committed.id === activity.activityId &&
+            committed.idempotencyKey === activity.activityId &&
+            committed.tenantId === context.tenantId &&
+            committed.actorId === context.actorId &&
+            committed.methodologyVersion === context.methodologyVersion &&
+            committed.factor?.id === priorFactorId &&
+            committed.factor?.version === priorFactorVersion &&
+            committed.activity?.scope === activity.scope &&
+            committed.activity?.category === category &&
+            committed.activity?.quantity === quantity &&
+            committed.activity?.method === activity.method &&
+            committed.activity?.factorId === priorFactorId &&
+            committed.activity?.factorVersion === priorFactorVersion &&
+            (!(activity.normalizedUnit ?? activity.unit) || committed.activity?.unit === (activity.normalizedUnit ?? activity.unit)) &&
+            JSON.stringify(committedEvidenceIds) === JSON.stringify(expectedEvidenceIds);
+          if (!matches || !committed.calculation || !committed.factor) {
+            throw new Error("committed ledger event does not match intake retry; manual reconciliation required");
+          }
+          activity = {
+            ...activity,
+            factorId: committed.factor.id,
+            factorVersion: committed.factor.version,
+            calculationStatus: "calculated",
+          };
+          await this.persistence.saveActivity(activity);
+          terminal = true;
+          return { activity, handoff: toLedgerHandoff(activity), calculation: committed.calculation, ledgerEvent: committed };
+        }
+      }
+
       if (activity.classificationStatus !== "classified" || activity.dataAvailability === "not_available") {
         activity = { ...activity, calculationStatus: "not_ready" };
         await this.persistence.saveActivity(activity);
@@ -66,6 +107,10 @@ export class DataIntakeService {
         await this.persistence.saveActivity(activity);
         terminal = true;
         return { activity, handoff: toLedgerHandoff(activity) };
+      }
+
+      if (priorFactorId && priorFactorVersion && (factor.id !== priorFactorId || factor.version !== priorFactorVersion)) {
+        throw new Error("factor version changed during idempotent retry; use a new idempotency key after review");
       }
 
       if (!factorIsImportable(factor)) {
