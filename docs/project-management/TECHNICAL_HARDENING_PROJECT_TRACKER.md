@@ -228,7 +228,16 @@ All tests below must run against an isolated disposable PostgreSQL database conf
 | PG-11 | Hash verification detects altered, missing or mislinked events | Controlled tampering fixture/test |
 | PG-12 | Large sequence values and driver conversions are safe | Boundary tests above JS safe integer range |
 
-**Evidence log — 2026-10-10 (observed CI; not a PostgreSQL integration run)**
+**Evidence log — 2026-10-10 (initial failure and remediation attempt; latest validation pending)**
+
+- Baseline workflow: [test run #126](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38046517189), job `test` (job ID `114197043342`). `npm run typecheck`: passed. `npm test`: failed, 58 passed / 4 failed / 62 total.
+- Failure triage: three failures were caused by synthetic test factors marked `verified` while their fixtures disallowed redistribution, which correctly makes them non-importable under the current gate. Those test-only fixtures now permit redistribution; production factor policy was not relaxed. The ADEME assertion was adjusted to match its existing wording (“not yet obtained and verified”) while the factor remains blocked and its source hash remains empty.
+- Added a PostgreSQL 16 service to [the test workflow](https://github.com/eliezermardegan/Hub-Carbon-Platform/blob/hardening/ip-supply-chain-governance/.github/workflows/test.yml) and a real-database integration file at `packages/carbon-ledger/src/postgres.integration.test.ts`. Current checks exercise schema installation, application-role attributes/table ownership, RLS read isolation, no-context fail-closed reads, cross-tenant insert rejection, append-only trigger behaviour, and transaction-local setting reset. This is partial coverage, not PG-01–PG-12 acceptance.
+- Latest observed head: `1aa11884fba4e7f55101faa695176c4f2bff8e6a`. [Workflow run #131](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38046905858) was still initializing the PostgreSQL service at last observation; no result is claimed yet.
+- Still missing before acceptance: actual run output; integration of the production persistence adapter with a PostgreSQL driver; pool reuse through that adapter; concurrency/head consistency; injected atomic rollback; equivalent/conflicting idempotency; audit mismatch; hash-chain tampering/verification; bigint boundary handling; and independent review. Do not mark any PG scenario passed until its executed assertion output is linked.
+- The original session could not run PostgreSQL locally because `docker`, `psql`, and `postgres` were unavailable. CI is now the intended execution environment; final evidence must record the actual PostgreSQL version, head SHA, run URL and pass/fail counts.
+
+
 
 - Workflow: [test run #126](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38046517189), job `test` (job ID `114197043342`).
 - `npm run typecheck`: passed. `npm test`: **failed**, 58 passed / 4 failed / 62 total.
