@@ -28,7 +28,7 @@ const directFactor: EmissionFactor = {
   value: 1.440,
   dataQuality: "high",
   provenance: {
-    sourceName: "European Commission",
+    sourceName: "Synthetic test fixture (not official source)",
     sourceUrl: "test://synthetic-eu-cbam-factor",
     sourceDocument: "Synthetic test fixture; does not reproduce or attest to official source content",
     sourceVersion: "synthetic-fixture-v1",
