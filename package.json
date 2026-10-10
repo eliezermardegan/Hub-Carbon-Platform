@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "tsx --test packages/*/src/*.test.ts packages/*/src/*.integration.test.ts",
+    "test": "tsx --test packages/*/src/*.test.ts packages/*/src/*.integration.test.ts apps/api/src/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
