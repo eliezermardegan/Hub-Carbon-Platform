@@ -54,7 +54,7 @@ The required adapter/database scenarios are exercised in disposable PostgreSQL C
 
 ## GDPR / data residency
 
-No claim of GDPR compliance or EU-only residency is made. The repository does not currently provide enough infrastructure evidence to map actual database replicas, object storage, queues, logs, monitoring, OCR/AI processors, backups, support tooling, retention, deletion and international transfers. This requires deployment-specific evidence and should be completed before enterprise production claims.
+No claim of GDPR compliance or EU-only residency is made. The repository does not yet evidence actual database replicas, object storage, queues, logs, monitoring, OCR/AI processors, backups, support tooling, retention, deletion or international transfers. The new [Data Protection, Data Flow and Residency Assessment](./DATA_PROTECTION_AND_RESIDENCY_ASSESSMENT.md) provides a system inventory, processing record, action register and acceptance criteria. It cites the official EU GDPR text and current ICO guidance. Every deployment fact remains marked for verification until supported by access-controlled evidence. Owner and independent privacy/legal reviewer are unassigned; do not make external compliance/residency claims meanwhile.
 
 ## Carbon calculation and provenance
 
@@ -92,3 +92,10 @@ No merge, deployment, production migration, or production database access is aut
 - Regression coverage: `packages/data-intake/src/service.test.ts` tests that unresolved and blocked paths persist their explicit state and perform zero ledger appends.
 - Commits: `40d804d070aaaf32046a799857b46964ac052aef`, `f7ec3f503d3ab56b1d4182d8840f9b68c1c62862`.
 - Status: implementation committed; latest-head CI pending. Retry/idempotency and persistence-versus-ledger failure recovery remain follow-up design items. This is not evidence of a distributed transaction.
+
+
+## Data protection / residency workstream — 2026-10-10
+
+- Created `docs/security/DATA_PROTECTION_AND_RESIDENCY_ASSESSMENT.md` with a system/data-flow inventory, processing-record fields, transfer and DPIA screening checklist, evidence register, ownership and acceptance criteria.
+- Official references: EU GDPR (EUR-Lex), ICO international transfers guidance (updated 15 January 2026) and ICO DPIA guidance. The current UK terminology/guidance must be confirmed for the specific transfer and date by a privacy/legal owner.
+- This is an assessment framework, not a completed DPIA or legal determination. Actual deployment locations, vendors, contracts and retention/deletion behavior remain unverified.
