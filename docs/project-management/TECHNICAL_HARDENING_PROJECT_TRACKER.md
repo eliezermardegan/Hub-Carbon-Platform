@@ -8,7 +8,7 @@
 **Working branch:** `hardening/ip-supply-chain-governance`  
 **Pull request:** [#21 — chore: add IP, provenance and supply-chain governance](https://github.com/eliezermardegan/Hub-Carbon-Platform/pull/21)  
 **PR state at last review:** Open, draft, unmerged  
-**Latest CI-verified implementation HEAD:** 4d5659f36b9d6702cd2381484fef474bf8635438 (Test CI #248, Supply Chain Security #168 and Factor Provenance Gate #163 passed; process-boundary recovery remains open)  
+**Latest CI-verified implementation HEAD:** 86f98d6f280b6bb83c5cb332c6a3a502d90a86a0 (Test CI #248, Supply Chain Security #168 and Factor Provenance Gate #163 passed; process-boundary recovery remains open)  
 **Production changes authorised:** No  
 **Independent validation completed:** No
 
@@ -84,12 +84,12 @@ The current work is on `hardening/ip-supply-chain-governance`, PR #21. The PR is
 
 | Workstream | Current status | Evidence / current finding | Remaining gate |
 |---|---|---|---|
-| P0 — PostgreSQL ledger and tenant isolation | TESTED — EVIDENCE RECORDED on latest candidate; independent review pending | Test CI #248 on SHA 4d5659f36b9d6702cd2381484fef474bf8635438 passed 100/100 on disposable PostgreSQL 16.15. RLS, application role grants, append-only protections, idempotency, bounded concurrent append and the same-process new-pool/service recovery scenario passed. | Independent security review and target-environment verification remain open. Recovery across a true process/worker boundary is tracked in Issue #28. No production readiness claim. |
+| P0 — PostgreSQL ledger and tenant isolation | TESTED — EVIDENCE RECORDED on latest candidate; independent review pending | Test CI #248 on SHA 4d5659f36b9d6702cd2381484fef474bf8635438 passed 100/100 on disposable PostgreSQL 16.15. RLS, application role grants, append-only protections, idempotency, bounded concurrent append and the same-process new-pool/service recovery scenario passed. | Independent security review and target-environment verification remain open. Recovery across a true process boundary is now tested in Test CI #250; Issue #28 technical acceptance criteria met. Independent review remains a separate gate. No production readiness claim. |
 | P0 — Typecheck and repository CI | TESTED — EVIDENCE RECORDED on latest candidate | On 4d5659f36b9d6702cd2381484fef474bf8635438, npm ci, normal typecheck, typecheck:tests and npm test passed (100/100, 0 failed, 0 skipped). Supply Chain Security #168 and Factor Provenance Gate #163 also passed on the same SHA. | Keep review and legal/privacy/deployment gates separate. |
 | P0 — Security baseline | IN PROGRESS | Supply-chain workflows and governance documentation have been added. | Evidence-based review of application/authentication, API/object access, secrets, encryption, logs, rate limiting, monitoring and deployment configuration remains necessary. |
 | P0 — GDPR/data residency | IN PROGRESS — evidence collection template created; facts unverified | [Data Protection, Data Flow and Residency Assessment](../security/DATA_PROTECTION_AND_RESIDENCY_ASSESSMENT.md) inventories databases/replicas, files, intake/temp storage, OCR/AI if used, logs, backups, support, integrations and CI. Official EU GDPR and ICO references are recorded. No deployed region/vendor/role/retention is asserted without evidence. | Assign engineering/operations and privacy/legal owners; complete the system/processing register from actual deployment and contracts; DPIA screen; transfer assessment; independent privacy review. No compliance/residency claim meanwhile. |
 | P1 — Factor provenance | IN PROGRESS; two candidates blocked | ADEME V23.6 and UK DESNZ 2026 candidate records have been explicitly marked `blocked`; missing source-artifact SHA-256 values are intentionally empty; redistribution is disabled. Default factor lookup excludes blocked factors. | Obtain and verify the exact official artefacts and rows, compute hashes from the actual bytes, verify the value/unit/methodology/licence, and only then consider promotion. |
-| P1 — Data intake and factor gating | TESTED — EVIDENCE RECORDED for PostgreSQL persistence/recovery within one process; process-boundary follow-up open | The canonical Data Intake schema bootstrap, runtime ESM compatibility and PostgreSQL failure/retry assertions passed in Test CI #248. | Issue #28 remains open for recovery via a true process/worker boundary and related lease/fencing race coverage. |
+| P1 — Data intake and factor gating | TESTED — EVIDENCE RECORDED for PostgreSQL persistence/recovery within one process; process-boundary follow-up open | The canonical Data Intake schema bootstrap, runtime ESM compatibility, PostgreSQL failure/retry, true OS process-boundary recovery and stale fencing-token rejection passed in Test CI #250. | Issue #28 remains open for recovery via a true process/worker boundary and related lease/fencing race coverage. |
 | P1 — Regulatory engine | NOT STARTED / evidence not recorded | No completed, source-verified rule-set inventory is recorded here. | Inventory each implemented jurisdictional rule and validate official sources, versions, effective dates, tests and limitations. |
 | P1 — Backups/recovery/operations | NOT STARTED / evidence not recorded | No verified restore exercise, RPO/RTO evidence or full production-observability review is recorded here. | Review infrastructure without changing production; document recovery objectives and run authorised isolated restore tests where available. |
 | P1 — Licence and supply-chain controls | IN PROGRESS | Source matrix, third-party notices, provenance policy and security/dependency workflows are present in the PR description; workflow outcomes must be checked per latest head. | Review exact introduced/changed components, SBOM and licence scan results, plus any administrative settings that need owner action. |
@@ -663,3 +663,17 @@ This entry supersedes earlier failure-status statements for candidate SHA 52c9cb
 - PR #21 remains OPEN / DRAFT / UNMERGED. Issue #27 remains open pending independent review and readiness decision. Issue #28 remains open for true process/worker-boundary recovery.
 - Legal/integrity boundary unchanged: CI is not legal advice, a GDPR/UK GDPR attestation, source-licence verification, independent security certification, production authorisation, or evidence of actual data residency/retention/backup controls. ADEME/DESNZ factor candidates remain blocked until exact official artifact/row/value/licence/hash evidence is verified.
 
+
+
+## True process-boundary recovery — verified on 2026-10-10
+
+Latest implementation SHA: `86f98d6f280b6bb83c5cb332c6a3a502d90a86a0`.
+
+- [Test CI #250](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38068658097): **101 passed, 0 failed, 0 skipped**. `npm ci`, normal typecheck, test-inclusive typecheck and full npm test passed against PostgreSQL 16.15 / Node.js 22.
+- [Supply Chain Security #170](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38068658173): PASS on the same SHA.
+- [Factor Provenance Gate #165](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38068658076): PASS on the same SHA.
+- Test #46 starts a separate worker process for the injected final-save failure, exits it, then starts another OS process for recovery. It asserts stable activity/event identity and hash, one ledger event, one intake activity, persisted factor snapshot, and no factor re-resolution.
+- Test #47 starts a process that establishes a durable claim and exits without releasing it, waits beyond the one-second test lease, then starts another process. The new claimant reclaims the lease; the prior fencing token is rejected; only the current token can persist the final state.
+- No RLS, least-privilege, idempotency, calculation, factor-gating or provenance assertion was weakened.
+
+Issue #28's technical acceptance criteria are now met for this test environment and can be closed as completed. Independent security review, target-environment verification, privacy/legal assessment and production readiness remain separate open gates. This test does not constitute a sustained load/soak campaign or production authorisation.

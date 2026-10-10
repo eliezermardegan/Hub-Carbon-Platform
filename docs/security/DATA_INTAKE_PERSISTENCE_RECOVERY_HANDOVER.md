@@ -4,10 +4,10 @@
 **Review date:** 2026-10-10  
 **Repository:** eliezermardegan/Hub-Carbon-Platform  
 **Branch:** hardening/ip-supply-chain-governance  
-**Latest validated implementation SHA:** 4d5659f36b9d6702cd2381484fef474bf8635438
+**Latest validated implementation SHA:** 86f98d6f280b6bb83c5cb332c6a3a502d90a86a0
 **PR:** [#21 — OPEN / DRAFT / UNMERGED](https://github.com/eliezermardegan/Hub-Carbon-Platform/pull/21)  
 **Tracking issue:** [#27 — OPEN pending independent review/readiness decision](https://github.com/eliezermardegan/Hub-Carbon-Platform/issues/27)  
-**Remaining technical follow-up:** [Issue #28 — OPEN](https://github.com/eliezermardegan/Hub-Carbon-Platform/issues/28)  
+**Process-boundary recovery:** passed in Test CI #250; Issue #28 technical acceptance criteria met  
 **Production change authorised:** No
 
 ## Executive status
@@ -85,3 +85,17 @@ A green CI run is not a legal opinion, GDPR/UK GDPR attestation, source-licence 
 - Independent technical/security review and privacy/legal review: pending/unassigned.
 - Production readiness: NOT APPROVED.
 - PR #21 remains draft/open/unmerged. Issue #27 remains open pending independent review and formal readiness decision. No production migration or deployment is authorised.
+
+
+## True process-boundary recovery — verified on 2026-10-10
+
+Latest implementation SHA: `86f98d6f280b6bb83c5cb332c6a3a502d90a86a0`.
+
+- [Test CI #250](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38068658097): **101 passed, 0 failed, 0 skipped**. `npm ci`, normal typecheck, test-inclusive typecheck and full npm test passed against PostgreSQL 16.15 / Node.js 22.
+- [Supply Chain Security #170](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38068658173): PASS on the same SHA.
+- [Factor Provenance Gate #165](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38068658076): PASS on the same SHA.
+- Test #46 starts a separate worker process for the injected final-save failure, exits it, then starts another OS process for recovery. It asserts stable activity/event identity and hash, one ledger event, one intake activity, persisted factor snapshot, and no factor re-resolution.
+- Test #47 starts a process that establishes a durable claim and exits without releasing it, waits beyond the one-second test lease, then starts another process. The new claimant reclaims the lease; the prior fencing token is rejected; only the current token can persist the final state.
+- No RLS, least-privilege, idempotency, calculation, factor-gating or provenance assertion was weakened.
+
+Issue #28's technical acceptance criteria are now met for this test environment and can be closed as completed. Independent security review, target-environment verification, privacy/legal assessment and production readiness remain separate open gates. This test does not constitute a sustained load/soak campaign or production authorisation.

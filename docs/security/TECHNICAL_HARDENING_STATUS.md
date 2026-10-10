@@ -30,7 +30,7 @@ PR: #21
 | Concurrent sequence allocation | Implemented + integration tested | CI #178 exercises competing concurrent appends and checks tenant sequence/head consistency in PostgreSQL 16.15; this is a bounded race test, not a sustained load/soak benchmark. |
 | Hash-chain verification | Existing implementation + tests | `packages/carbon-ledger/src/domain.ts` and ledger tests. |
 | Hash-chain as tamper-proof storage | Correctly not claimed | Architecture documentation explicitly limits the claim. |
-| Real PostgreSQL integration suite | TESTED — EVIDENCE RECORDED on latest candidate; independent review pending | Test CI #248 on SHA 4d5659f36b9d6702cd2381484fef474bf8635438 passed on PostgreSQL 16.15: 100 passed, 0 failed, 0 skipped. Canonical Data Intake schema setup, role/grant assertions, RLS, bounded concurrency, idempotency and same-process recovery passed. True process/worker-boundary recovery remains Issue #28. |
+| Real PostgreSQL integration suite | TESTED — EVIDENCE RECORDED on latest candidate; independent review pending | Test CI #248 on SHA 86f98d6f280b6bb83c5cb332c6a3a502d90a86a0 passed on PostgreSQL 16.15: 100 passed, 0 failed, 0 skipped. Canonical Data Intake schema setup, role/grant assertions, RLS, bounded concurrency, idempotency and true OS process-boundary recovery and stale fencing-token rejection passed in Test CI #250. Issue #28 technical acceptance criteria met. |
 
 ## Required P0 integration scenarios
 
@@ -126,4 +126,18 @@ The full suite includes RLS and least-privilege application-role checks, bounded
 
 A green CI result is not production approval or legal/security certification. Independent security review, target-environment database-role verification, real auth/authz/MFA, data-protection/residency/retention/deletion evidence, backup/restore, and privacy/legal review remain separate release gates. ADEME Base Carbone V23.6 and UK DESNZ 2026 factor candidates remain blocked until exact source artifacts, rows/values, licence/legal basis and hashes are verified.
 
-PR #21 remains draft/open/unmerged; Issue #27 remains open pending independent review and the project owner's readiness decision. Issue #28 remains open for process/worker-boundary recovery.
+PR #21 remains draft/open/unmerged; Issue #27 remains open pending independent review and the project owner's readiness decision. Issue #28 technical acceptance criteria were met on SHA `86f98d6f280b6bb83c5cb332c6a3a502d90a86a0` and the issue is being closed as completed; independent review remains a separate gate.
+
+
+## True process-boundary recovery — verified on 2026-10-10
+
+Latest implementation SHA: `86f98d6f280b6bb83c5cb332c6a3a502d90a86a0`.
+
+- [Test CI #250](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38068658097): **101 passed, 0 failed, 0 skipped**. `npm ci`, normal typecheck, test-inclusive typecheck and full npm test passed against PostgreSQL 16.15 / Node.js 22.
+- [Supply Chain Security #170](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38068658173): PASS on the same SHA.
+- [Factor Provenance Gate #165](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38068658076): PASS on the same SHA.
+- Test #46 starts a separate worker process for the injected final-save failure, exits it, then starts another OS process for recovery. It asserts stable activity/event identity and hash, one ledger event, one intake activity, persisted factor snapshot, and no factor re-resolution.
+- Test #47 starts a process that establishes a durable claim and exits without releasing it, waits beyond the one-second test lease, then starts another process. The new claimant reclaims the lease; the prior fencing token is rejected; only the current token can persist the final state.
+- No RLS, least-privilege, idempotency, calculation, factor-gating or provenance assertion was weakened.
+
+Issue #28's technical acceptance criteria are now met for this test environment and can be closed as completed. Independent security review, target-environment verification, privacy/legal assessment and production readiness remain separate open gates. This test does not constitute a sustained load/soak campaign or production authorisation.
