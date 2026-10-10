@@ -8,7 +8,7 @@
 **Working branch:** `hardening/ip-supply-chain-governance`  
 **Pull request:** [#21 — chore: add IP, provenance and supply-chain governance](https://github.com/eliezermardegan/Hub-Carbon-Platform/pull/21)  
 **PR state at last review:** Open, draft, unmerged  
-**Head recorded at last review:** `1d891110a02eae48a0343ca4d4495eca7e3e4d9c`  
+**Head recorded at last review:** `21b9e8d0f7a6ce2bc41ad6da34308ddf671babf5`  
 **Production changes authorised:** No  
 **Independent validation completed:** No
 
@@ -375,15 +375,89 @@ For each CCCA item, the task owner must add links to the design decision, releva
 | CCCA-12 | Architecture decision required | Not recorded | UNASSIGNED | NOT STARTED |
 
 
-## 15. Change log
+
+
+## 18. Novisto carbon-accounting guide — repository fit-gap assessment
+
+**Source reviewed:** Novisto, *Carbon Accounting: The Definitive Enterprise Guide*, https://novisto.com/resources/carbon-accounting-guide (web review on 2026-10-10).
+
+**Source-quality note:** This is a vendor-authored educational/marketing guide, useful as an enterprise capability checklist but not itself a regulatory authority, assurance standard, or proof of the Novisto product's actual performance. Regulatory statements in the article are not adopted as legal requirements without a separate check against current primary sources. This section records product/architecture fit-gap analysis, not certification or a claim of feature parity.
+
+### 18.1 What the repository already contemplates or documents
+
+| Guide topic | Evidence inspected in this repository | Assessment |
+|---|---|---|
+| Activity data × emission factor calculation | `packages/carbon-core/README.md` states deterministic calculation primitives and the initial formula; factor identity/version are retained. | CONTEMPLATED / documented at domain level. Full method coverage and acceptance evidence still need verification. |
+| Scope 1, 2 and 3 accounting | Project charter targets Scope 1/2/3; `packages/data-intake/README.md` says Scope 3 supports all 15 categories. | CONTEMPLATED. Must verify category mapping, boundaries, exclusions and tests; this is not proof every calculation pathway is implemented. |
+| Activity, spend and unresolved methods | Data Intake README distinguishes primary, activity-based, spend-based and unresolved methods; missing data is not silently zero. | PARTIALLY DOCUMENTED. Explicit average-data method, method selection/fallback policy and comparative quality treatment need acceptance tests. |
+| Emission-factor provenance and versioning | `packages/factor-registry/README.md` calls for source/version, licence, attribution, retrieval date, hash, geography, period, units, methodology/GWP and data quality. | CONTEMPLATED; some candidates remain blocked pending source/licence evidence. Automatic updating must not bypass review and licensing gates. |
+| Source evidence and audit trail | Data Intake README defines source-to-ledger flow and immutable evidence by content hash; `docs/architecture/persistent-carbon-ledger.md` documents event lineage, factor snapshot, hash chain, audit context and explicit corrections. | DESIGN DOCUMENTED; P0 real-PostgreSQL validation remains outstanding. A hash chain detects inconsistencies but does not prove source truth or prevent all privileged tampering. |
+| Flexible ingestion and integration boundary | Data Intake pipeline is documented as source → document/record → normalise → classify → validate → activity → evidence → engine → ledger. | CONTEMPLATED. OCR/PDF extraction, ERP/procurement/HRIS/utility connectors and scheduled feeds must be classified individually by actual implementation and test evidence. |
+| Regulatory rule separation and versioning | `packages/regulatory-engine/README.md` documents jurisdictional, versioned, effective-dated and explainable rules, and explicitly says no real regime (including CBAM/CSRD/ETS) is implemented yet. | ARCHITECTURAL BOUNDARY EXISTS; real rule sets are not implemented according to the README. |
+| Tenant isolation and transaction integrity | Persistent ledger design documents trusted tenant context, RLS, atomic writes, idempotency and append-only corrections. | DESIGN DOCUMENTED; actual database-role/RLS and concurrency evidence is still a release blocker. |
+
+### 18.2 Gaps and recommended additions
+
+| ID | Priority | Guide capability / gap | Proposed project addition and acceptance criteria | Initial status |
+|---|---|---|---|---|
+| NOV-01 | P1 | Organisational modelling: entities, subsidiaries, facilities, sites and evolving reporting structures | Define a versioned organisation/site hierarchy and effective-dated relationships to activities, meters, suppliers and reporting boundaries. Model acquisitions, divestments and boundary changes without rewriting prior-period results. Add tests for historical rollups and access control. | NOT STARTED |
+| NOV-02 | P1 | Data ownership and multi-step approval workflows | Define accountable data owner, preparer, reviewer/approver, approval state, timestamps, comments and evidence for material data/calculation changes. Add separation-of-duties rules where required and tests for unauthorised approval or edits after approval. | NOT STARTED |
+| NOV-03 | P1 | Data-quality/variance checks | Add configurable validation and period-over-period variance/anomaly rules with explainable thresholds, false-positive handling, reviewer disposition and audit events. An anomaly is a review signal, not an automatic correction or proof of error. | NOT STARTED |
+| NOV-04 | P1 | Scope 2 location-based and market-based accounting | Define separate method/result identities and required evidence for both approaches; specify geography, period, contractual instruments/energy attributes, factor source and eligibility checks. Prevent double counting and test missing/invalid contractual evidence. | NOT STARTED |
+| NOV-05 | P1 | Baseline year, recalculation and forecasting | Define base-year selection, organisational-boundary changes, recalculation triggers, restatement reasons, versioned assumptions and comparable historical series. Separate forecast scenarios from measured/actual ledger results and test reproducibility. | NOT STARTED |
+| NOV-06 | P1 | Reduction targets and progress tracking | Assess a target model (absolute and/or intensity metrics), baseline, target year, boundary, scope/category coverage, methodology and progress indicators. External frameworks such as SBTi must be treated as independently versioned requirements; do not imply validation/approval by SBTi. | NOT STARTED |
+| NOV-07 | P1 | Supplier engagement and primary Scope 3 data | Define supplier invitation/data-request workflow, reporting period, product/activity units, evidence, confidentiality, response status, validation and factor/method hierarchy. Distinguish supplier-specific primary data from spend/industry-average estimates and track improvements over time. | NOT STARTED |
+| NOV-08 | P1 | Emission-factor refresh and coverage | Add a controlled refresh/coverage workflow with source-version diff, effective dates, geography/category coverage, licensing, approval, impact analysis and reproducible recalculation. No automatic production promotion of a new factor solely because a source endpoint changed. | IN PROGRESS — link to P1-A / CCCA-04 |
+| NOV-09 | P1 | Multi-step audit-ready reporting package | Define a reproducible report snapshot linking each reported figure to boundary, period, source/evidence, factor version, method, calculation-engine version, owner, approvals and restatements. Add export and reconciliation tests. | NOT STARTED |
+| NOV-10 | P2 / discovery | Broader ESG metric and disclosure integration | Decide whether Hub should remain a carbon-accounting platform or expose a general ESG evidence/disclosure layer. If adopted, define shared evidence/control references without conflating non-carbon metrics with emissions calculations. | NOT STARTED |
+| NOV-11 | P2 / discovery | Decarbonisation planning, targets, scenario analysis and internal carbon pricing | Assess as a distinct management-planning capability, separate from verified emissions accounting. Define scenario assumptions, price units, time horizon, governance and clear separation from actual emissions and carbon credits. | NOT STARTED |
+| NOV-12 | P1 | Product lifecycle, downstream Scope 3 and operational hotspots | Verify that category/data models cover use-of-sold-products, end-of-life, process/fugitive emissions, fleet, facilities, purchased goods and relevant supplier tiers. Record unsupported categories explicitly and test category-specific data requirements. | NOT STARTED |
+
+### 18.3 Product-accounting safeguards arising from the guide
+
+1. **Keep actuals, estimates, forecasts, targets and offsets distinct.** They must not be aggregated under a single unlabeled emissions value. Any offset/removal credit must be represented separately from gross inventory emissions, with its own evidence and eligibility checks.
+2. **Do not treat a public factor dataset as automatically reusable.** Verify exact artefact, licence, attribution and redistribution rights. Factor updates must be versioned and approved; historical reports must remain reproducible.
+3. **Do not equate audit trail with assurance.** A traceable calculation supports review but does not prove source accuracy, adequate controls, independent verification or regulatory compliance.
+4. **Treat automated extraction as a proposal, not truth.** OCR/AI-extracted values require source links, confidence, validation, correction and human review thresholds proportionate to risk.
+5. **Preserve Scope 2 method distinctions.** Location-based and market-based results should remain separately identifiable where applicable, with source-specific evidence and transparent assumptions.
+6. **Do not silently overwrite baselines or historical periods.** Boundary changes, factor revisions and methodology changes require documented impact assessment and explicit restatement/recalculation events.
+7. **Keep management features separate from accounting primitives.** Targets, forecasts, internal carbon prices and reduction initiatives may consume verified results, but should not alter immutable historical ledger facts.
+8. **Regulatory assertions require primary-source validation.** The Novisto page includes broad claims about CSRD, SEC, California laws and other frameworks. The project must verify each jurisdiction's current scope, effective dates, status and applicability before encoding rules or marketing compliance.
+
+### 18.4 Crosswalk to the existing CCCA addenda
+
+| Novisto assessment | Existing project task to reuse | Relationship |
+|---|---|---|
+| NOV-01 organisation/site hierarchy | CCCA-08; P1-C regulatory boundary mapping | Extends boundary modelling; requires a specific domain model. |
+| NOV-02 owners and approvals | CCCA-02, CCCA-06, P0-B | Adds operational workflow and separation of duties to provenance/verification. |
+| NOV-03 quality and variance checks | CCCA-06, CCCA-05 | Adds period-over-period anomaly signals and review disposition. |
+| NOV-04 Scope 2 market/location methods | CCCA-07, CCCA-08, P1-A | Specific method/evidence acceptance criteria. |
+| NOV-05 baseline and recalculation | CCCA-08, CCCA-07, P1-C | Connects effective-dated boundaries, restatements and historical reproducibility. |
+| NOV-06 targets and progress | P1-C / regulatory and reporting assessment | Adjacent management capability; scope decision needed. |
+| NOV-07 supplier engagement | CCCA-03, CCCA-05, CCCA-09 | Supplier-specific data and secure cross-organisation sharing. |
+| NOV-08 factor refresh/coverage | CCCA-04, P1-A | Direct extension of existing provenance and licensing gate. |
+| NOV-09 reporting snapshot | CCCA-01, CCCA-02, CCCA-06 | Combines interoperability with end-to-end audit evidence. |
+| NOV-10 broader ESG | CCCA-10 and architecture review | Optional product-scope decision, not assumed in current carbon scope. |
+| NOV-11 decarbonisation planning | Project charter / future roadmap | Keep separate from P0 ledger and compliance claims. |
+| NOV-12 source/category coverage | CCCA-07, CCCA-08, CCCA-09 | Category-level coverage and explicit limitations. |
+
+### 18.5 Source and evidence record
+
+- Guide URL: https://novisto.com/resources/carbon-accounting-guide
+- Review date: 2026-10-10.
+- Repository artefacts inspected: `packages/carbon-core/README.md`, `packages/data-intake/README.md`, `packages/factor-registry/README.md`, `packages/regulatory-engine/README.md`, `docs/architecture/persistent-carbon-ledger.md`, and this tracker.
+- Evidence limitation: this was a repository/documentation fit-gap inspection, not a full code audit, live-system test, legal review, assurance engagement, or independent validation. The listed capabilities must be verified against implementation, tests and deployment configuration before being marked complete.
+
+## 19. Change log
 
 | Date (UTC) | Change | Evidence / commit | Updated by |
 |---|---|---|---|
 | 2026-10-09 | Initial living project tracker established from the approved Technical Implementation and Security Hardening Brief and observed branch/PR state. Records P0/P1 work breakdown, acceptance criteria, current blockers, evidence rules and mandatory final-task handover. | This document; branch `hardening/ip-supply-chain-governance`; PR #21 | Project implementation session — individual task owner not assigned in this document |
 | 2026-10-10 | Added traceability matrix against the user-provided Digital Catapult CCCA report and 12 explicit addenda covering open formats/APIs, verification, selective sharing, factor gaps, integrations, quality/lineage, calculation methods, boundaries/double counting, product carbon exchange/e-liability, XBRL, security/privacy and trust framework. Statuses distinguish existing design coverage from verified implementation. | CCCA report summary pp. 4–6 and detailed sections pp. 56–85; section 14 of this tracker | Project implementation session — independent review not yet performed |
+| 2026-10-10 | Added a repository/documentation fit-gap assessment of Novisto's enterprise carbon accounting guide, 12 proposed capability items, safeguards, crosswalk to CCCA tasks and source/evidence limitations. Updated recorded branch head. | https://novisto.com/resources/carbon-accounting-guide; repository files listed in section 18; commit to be recorded after this change | Project implementation session — independent review not yet performed |
 | YYYY-MM-DD | Describe the code/documentation change, status transition, test evidence and blocker/closure. | Commit SHA / CI run / evidence link | Name |
 
-## 16. How this document must be maintained
+## 20. How this document must be maintained
 
 - Update the relevant task row and findings register in the same change set as substantive implementation work, or in the immediately following documentation commit.
 - Every status transition must include a date and evidence link in the change log.
@@ -394,6 +468,6 @@ For each CCCA item, the task owner must add links to the design decision, releva
 - Once the final declaration is submitted, preserve it in the PR discussion and link it here. The project approver then decides whether the work may enter independent validation.
 - No task in this tracker grants permission to merge, deploy, or alter production.
 
-## 17. Final acceptance principle
+## 21. Final acceptance principle
 
 The programme is ready to be handed over for independent validation only when the evidence is complete and all exceptions are explicit. It is not automatically production-ready because code was committed, documentation was written, a subset of tests passed, or a CI workflow was green. P0 remains incomplete until the real PostgreSQL integration criteria are demonstrated. Any unresolved security, privacy, licensing, factor provenance, integration, regulatory, backup or operational risk must remain visible to the reviewer and approver.
