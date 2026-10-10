@@ -90,3 +90,6 @@ export class PostgresDataIntakePersistence implements DataIntakePersistence {
   async getActivity(c:string,id:string):Promise<ActivityRecord|null>{return this.transaction(async(client,tenant)=>{this.assertTenant(c,tenant);const r=await client.query<Row<ActivityRecord>>("select payload from data_intake_activities where tenant_id=$1 and activity_id=$2",[tenant,id]);return r.rows[0]?structuredClone(decode(r.rows[0].payload)):null;});}
   async listActivities(c:string,p:string):Promise<ActivityRecord[]>{return this.transaction(async(client,tenant)=>{this.assertTenant(c,tenant);const r=await client.query<Row<ActivityRecord>>("select payload from data_intake_activities where tenant_id=$1 and reporting_period_id=$2 order by created_at,activity_id",[tenant,p]);return r.rows.map(x=>structuredClone(decode(x.payload)));});}
 }
+
+// Stable default object for ESM/CommonJS interop at the public package boundary.
+export default { PostgresDataIntakePersistence, DATA_INTAKE_POSTGRES_SCHEMA };

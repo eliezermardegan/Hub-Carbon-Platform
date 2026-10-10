@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { SCOPE3_CATEGORIES, createActivity, defaultIdempotencyKey, toLedgerHandoff, validateActivity } from "./index";
+import { SCOPE3_CATEGORIES, createActivity, defaultIdempotencyKey, toLedgerHandoff, validateActivity } from "./index.js";
+import { DataIntakeService, DATA_INTAKE_POSTGRES_SCHEMA, PostgresDataIntakePersistence } from "./index.js";
 
 const base = {
   companyId:"company-1", reportingPeriodId:"2026", scope:3 as const, scope3Category:1 as const,
@@ -39,4 +40,11 @@ test("confidence and quality remain distinct", () => {
 test("ledger handoff blocks missing factor/evidence", () => {
   const a=createActivity({...base,factorId:undefined,factorVersion:undefined});
   assert.equal(toLedgerHandoff(a).calculationReady,false);
+});
+
+
+test("public entry point exposes Data Intake runtime exports", () => {
+  assert.equal(typeof DataIntakeService, "function");
+  assert.equal(typeof PostgresDataIntakePersistence, "function");
+  assert.match(DATA_INTAKE_POSTGRES_SCHEMA, /data_intake_activities/);
 });
