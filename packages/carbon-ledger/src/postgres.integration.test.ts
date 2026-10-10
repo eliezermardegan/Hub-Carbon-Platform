@@ -6,7 +6,8 @@ import { Pool } from "pg";
 import { PostgresLedgerPersistence, type PgPool } from "./postgres.js";
 import { CarbonLedgerDomain } from "./domain.js";
 import { DataIntakeService } from "../../data-intake/src/service.js";
-import { createActivity, type ActivityInput, type ActivityRecord, DATA_INTAKE_POSTGRES_SCHEMA, PostgresDataIntakePersistence } from "../../data-intake/src/index.js";
+import { createActivity, type ActivityInput, type ActivityRecord } from "../../data-intake/src/index.js";
+import { DATA_INTAKE_POSTGRES_SCHEMA, PostgresDataIntakePersistence } from "../../data-intake/src/postgres.ts";
 import type { DataIntakePersistence } from "../../data-intake/src/persistence.js";
 
 const databaseUrl = process.env.PG_INTEGRATION_URL;
