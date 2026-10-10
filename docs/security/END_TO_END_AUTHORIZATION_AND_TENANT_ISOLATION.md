@@ -56,4 +56,17 @@ A passing test of an injected \`authenticate\` function proves how the API behav
 
 ## 5. Acceptance boundary
 
-The matrix will be updated with exact CI links after the new tests run. Even when those workflows pass, the conclusion will remain “tested authorization/tenant-isolation controls for the implemented surface,” not “authentication fully implemented”, “GDPR-compliant”, or “production-ready”. Keep PR #21 draft/open and Issue #27 open until independent technical/security review and a project-owner readiness decision are recorded.
+Exact current-head CI evidence is recorded in §6 below. Even when those workflows pass, the conclusion will remain “tested authorization/tenant-isolation controls for the implemented surface,” not “authentication fully implemented”, “GDPR-compliant”, or “production-ready”. Keep PR #21 draft/open and Issue #27 open until independent technical/security review and a project-owner readiness decision are recorded.
+
+
+## 6. Current-head CI verification — 2026-10-10
+
+Implementation/test head `e65f273f15f0b7667d2c92d632f01f0178891ac2` passed all three required workflows:
+
+- [Test CI #257](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38071325608): **108 passed, 0 failed, 0 skipped**. The run completed `npm ci`, `npm run typecheck`, `npm run typecheck:tests`, and `npm test`.
+- [Supply Chain Security #177](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38071325604): PASS on the same SHA.
+- [Factor Provenance Gate #172](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38071325609): PASS on the same SHA.
+
+The passing suite includes the added HTTP boundary checks, cross-tenant request rejection before persistence/factor resolution, and PostgreSQL RLS isolation for Data Intake records and activity claims. The test corrections use namespace/default-export resolution for the Node 22/tsx test boundary and parse the actual newline-separated `psql` output; no security assertions were removed.
+
+This proves the tested behavior for the implemented code surface and disposable CI database. It does **not** establish a deployed identity provider/JWT/session/MFA integration, a complete RBAC/object-permission model, authorization for missing worker/document/export routes, or deployment configuration correctness. PR #21 remains draft/open; Issue #27 remains open for environment evidence, independent review and a formal readiness decision.
