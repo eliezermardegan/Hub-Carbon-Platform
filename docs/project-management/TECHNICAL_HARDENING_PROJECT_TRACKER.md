@@ -78,14 +78,14 @@ Every task must have a named individual or explicitly assigned role as owner. If
 
 A single person may perform more than one role only where the project owner explicitly accepts the arrangement. Critical security and P0 ledger changes require independent review; self-review alone is insufficient.
 
-## 5. Current programme status — 2026-10-09
+## 5. Current programme status — 2026-10-10
 
 The current work is on `hardening/ip-supply-chain-governance`, PR #21. The PR is open and draft. No merge or deployment is authorised.
 
 | Workstream | Current status | Evidence / current finding | Remaining gate |
 |---|---|---|---|
 | P0 — PostgreSQL ledger and tenant isolation | IN PROGRESS | The PR describes trusted server-side tenant context, transaction-local tenant settings, RLS hardening, append-only protections, idempotency payload comparison, audit-context checks and safe `bigint` handling. Unit and mock coverage exists. | Run the required suite against a disposable real PostgreSQL instance; verify role privileges, pooling, concurrency and rollback against the actual schema/driver. |
-| P0 — Typecheck and repository CI | IN PROGRESS | Earlier CI runs exposed TypeScript provenance errors and subsequent integration-test expectation failures. Follow-up changes were pushed; the newest relevant runs were still queued/in progress at last observation. | Inspect the latest head's final run results and logs; record exact run URLs and failure/pass summaries. Do not infer success from a queued run. |
+| P0 — Typecheck and repository CI | IN PROGRESS / TEST FAILURES OBSERVED | On the observed PR run, `npm run typecheck` passed but `npm test` failed: 58 passed, 4 failed out of 62. Failures: golden end-to-end calculation; data-intake factor approval; ADEME provenance wording assertion; EU CBAM end-to-end calculation. | Fix or explicitly adjudicate each regression, then obtain a fresh passing run on the exact latest head. This unit-test run does not exercise real PostgreSQL. |
 | P0 — Security baseline | IN PROGRESS | Supply-chain workflows and governance documentation have been added. | Evidence-based review of application/authentication, API/object access, secrets, encryption, logs, rate limiting, monitoring and deployment configuration remains necessary. |
 | P0 — GDPR/data residency | NOT STARTED / evidence not recorded | No complete, verified map of actual processing locations, subprocessors, retention and deletion was recorded in this tracker at last review. | Map actual systems and contracts; identify gaps and owners. No residency or GDPR-compliance claim without evidence. |
 | P1 — Factor provenance | IN PROGRESS; two candidates blocked | ADEME V23.6 and UK DESNZ 2026 candidate records have been explicitly marked `blocked`; missing source-artifact SHA-256 values are intentionally empty; redistribution is disabled. Default factor lookup excludes blocked factors. | Obtain and verify the exact official artefacts and rows, compute hashes from the actual bytes, verify the value/unit/methodology/licence, and only then consider promotion. |
@@ -227,6 +227,14 @@ All tests below must run against an isolated disposable PostgreSQL database conf
 | PG-10 | Application role cannot bypass RLS or mutate historical events | Role/privilege checks and attempted mutations |
 | PG-11 | Hash verification detects altered, missing or mislinked events | Controlled tampering fixture/test |
 | PG-12 | Large sequence values and driver conversions are safe | Boundary tests above JS safe integer range |
+
+**Evidence log — 2026-10-10 (observed CI; not a PostgreSQL integration run)**
+
+- Workflow: [test run #126](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38046517189), job `test` (job ID `114197043342`).
+- `npm run typecheck`: passed. `npm test`: **failed**, 58 passed / 4 failed / 62 total.
+- Failing tests: `golden end-to-end: 10000 kWh at 0.5 kgCO2e/kWh = 5000 kgCO2e`; `ingests, calculates and sends activity to ledger`; `records ADEME source claims as unverified pending exact artifact review`; `EU CBAM EAF end-to-end cycle preserves direct + indirect units and totals`.
+- Real PostgreSQL: **NOT RUN**. The current workflow does not provision PostgreSQL, and no real-database integration test file is present at `packages/carbon-ledger/src/postgres.integration.test.ts`. No PG-01–PG-12 scenario may be marked passed from this run.
+- Execution environment limitation: this session has no `docker`, `psql` or `postgres` executable and cannot resolve `github.com` from the local shell, so a local database could not be provisioned or the repository cloned for local execution. The next executable step is to add a reproducible PostgreSQL-backed integration harness to CI, then record its actual run output.
 
 **Required record for each run:** date/time, branch/head SHA, exact command or workflow URL, PostgreSQL version, test database setup (no secrets), pass/fail counts, relevant logs/artifact link, deviations and reviewer. Never put credentials or sensitive data in this record.
 
@@ -541,6 +549,7 @@ The existing CCCA alignment above captures the report's main strategic recommend
 | 2026-10-10 | Expanded the detailed CCCA report fit-gap with six operational addenda covering data ownership, collection cadence, cleaning/quarantine, quality dimensions, transformation controls and auditable trend/report review. | CCCA report printed pp. 47–69 and 88–91; section 19 of this tracker | Project implementation session — independent review not yet performed |
 | 2026-10-10 | Added fit-gap analysis of the user-provided KPMG GHG reporting handbook and King's College London carbon-accounting methodology; created ten GHGR addenda for category methodology, exclusions, GWP, restatements, factor-vintage alignment, uncertainty, offsets, report profiles, inventory principles and Scope 2 evidence. | User-provided handbook-ghg-emissions-reporting.pdf and carbon-accounting-methodology.pdf; section 20 of this tracker | Project implementation session — independent review not yet performed |
 | 2026-10-10 | Synchronized tracker metadata with the observed repository HEAD; no task status, priority, acceptance criterion or execution order changed. P0 remains open pending real-PostgreSQL evidence; GHGR-01–GHGR-10 remain NOT STARTED. | Pre-update HEAD: `7fbfa80d0e70938cdd5731b9ca8ffcaaabdbffc2`; tracker metadata-only update | Project implementation session — independent review not yet performed |
+| 2026-10-10 | Recorded observed CI evidence and explicitly retained the real-PostgreSQL gate: typecheck passed, unit suite failed 4/62; no real PostgreSQL scenarios ran. No task was marked complete. | [Workflow run #126](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38046517189); section 7 evidence log | Project implementation session — independent review not yet performed |
 | YYYY-MM-DD | Describe the code/documentation change, status transition, test evidence and blocker/closure. | Commit SHA / CI run / evidence link | Name |
 
 ## 22. How this document must be maintained
