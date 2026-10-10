@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { DataIntakeService } from "./service";
 import { InMemoryDataIntakePersistence } from "./persistence";
 import type { ActivityRecord } from "./index";
+import { calculateEmissions } from "../../carbon-core/src/index";
 
 const activity = (overrides: Partial<ActivityRecord> = {}): ActivityRecord => ({
   activityId: "a1", companyId: "tenant-1", reportingPeriodId: "2026", scope: 2, activityType: "electricity",
@@ -45,14 +46,31 @@ function idempotentLedger() {
   let calls = 0;
   return {
     ledger: {
-      append: async (command: any) => {
+      append: async (command: any, context: any) => {
         calls++;
         const existing = events.get(command.id);
         if (existing) return existing;
-        const event = { id: command.id, eventType: "entry", eventHash: "hash-" + command.id };
+        const event = {
+          id: command.id,
+          idempotencyKey: command.id,
+          tenantId: context.tenantId,
+          actorId: context.actorId,
+          methodologyVersion: context.methodologyVersion,
+          eventType: "entry",
+          eventHash: "hash-" + command.id,
+          activity: structuredClone(command.activity),
+          factor: {
+            id: command.factor.id, version: command.factor.version, value: command.factor.value,
+            factorUnit: command.factor.factorUnit, provenance: structuredClone(command.factor.provenance),
+          },
+          calculation: calculateEmissions(command.activity),
+          evidence: structuredClone(command.evidence ?? []),
+        };
         events.set(command.id, event);
         return event;
       },
+      findByIdempotencyKey: async (tenantId: string, key: string) =>
+        [...events.values()].find(event => event.tenantId === tenantId && event.idempotencyKey === key) ?? null,
     } as any,
     calls: () => calls,
     uniqueWrites: () => events.size,
@@ -168,7 +186,7 @@ test("recovers when ledger append succeeded but final intake persistence failed"
   await assert.rejects(service.ingestActivity(activity({ activityId: undefined }), context()), /simulated intake persistence outage/);
   const recovered = await service.ingestActivity(activity({ activityId: undefined }), context());
   assert.equal(recovered.activity.calculationStatus, "calculated");
-  assert.equal(ledger.calls(), 2);
+  assert.equal(ledger.calls(), 1);
   assert.equal(ledger.uniqueWrites(), 1);
   assert.equal(ledger.ids().length, 1);
 });
