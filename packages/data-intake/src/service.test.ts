@@ -144,6 +144,22 @@ test("recovers when ledger append succeeded but final intake persistence failed"
   assert.equal(ledger.ids().length, 1);
 });
 
+test("retries a not_ready activity with the same payload when its factor becomes available", async () => {
+  const persistence = makePersistence();
+  const ledger = idempotentLedger();
+  let attempts = 0;
+  const service = new DataIntakeService(persistence, {
+    resolve: async () => (++attempts === 1 ? null : factor),
+  }, ledger.ledger);
+  const first = await service.ingestActivity(activity({ activityId: undefined }), context());
+  assert.equal(first.activity.calculationStatus, "not_ready");
+  const retry = await service.ingestActivity(activity({ activityId: undefined }), context());
+  assert.equal(retry.activity.calculationStatus, "calculated");
+  assert.equal(retry.activity.activityId, first.activity.activityId);
+  assert.equal(attempts, 2);
+  assert.equal(ledger.uniqueWrites(), 1);
+});
+
 test("concurrent requests with the same idempotency key do not both process", async () => {
   const persistence = makePersistence();
   const ledger = idempotentLedger();
