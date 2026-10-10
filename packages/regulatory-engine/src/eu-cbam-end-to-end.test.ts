@@ -5,7 +5,8 @@ import type { LedgerPersistence, PersistedLedgerEvent, AuditRecord } from "../..
 import type { EmissionFactor } from "../../factor-registry/src/index.js";
 import { DataIntakeService } from "../../data-intake/src/service.js";
 
-import type { ActivityRecord, Evidence, SourceDocument } from "../../data-intake/src/index.js";
+import type { ActivityRecord } from "../../data-intake/src/index.js";
+import { InMemoryDataIntakePersistence } from "../../data-intake/src/persistence.js";
 import { buildCarbonReport, buildCbamReport } from "../../reporting-engine/src/index.js";
 import { createRegulatoryEngine } from "./domain.js";
 
@@ -53,16 +54,7 @@ const indirectFactor: EmissionFactor = {
   value: 1.732
 };
 
-class MemoryIntake {
-  activities: ActivityRecord[] = [];
-  documents: SourceDocument[] = [];
-  evidence: Evidence[] = [];
-  async claimActivity(a: ActivityRecord, _payloadHash: string) { return { kind: "claimed" as const, activity: structuredClone(a) }; }
-  async releaseActivityClaim(_companyId: string, _key: string) {}
-  async saveActivity(a: ActivityRecord) { this.activities.push(a); return null; }
-  async saveDocument(d: SourceDocument) { this.documents.push(d); }
-  async saveEvidence(e: Evidence) { this.evidence.push(e); }
-}
+class MemoryIntake extends InMemoryDataIntakePersistence {}
 
 class MemoryLedger implements LedgerPersistence {
   events: PersistedLedgerEvent[] = [];
