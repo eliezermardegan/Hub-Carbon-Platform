@@ -1,7 +1,7 @@
 # Data Intake Persistence Status Addendum — 2026-10-10
 
 **Latest overall CI-verified SHA:** `aae7744dc548d61a117f84ade07d6d6dee8b895f` (108/108 + SQL audit pass in disposable CI)  
-**Data Intake process-boundary recovery evidence SHA:** `7168f513a203dc78d742cf42c70cb4e3fcaca6c9
+**Data Intake process-boundary recovery evidence SHA:** `7168f513a203dc78d742cf42c70cb4e3fcaca6c9`  
 **Test CI:** [#248 / run 38067395157](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395157) — **PASS: 100/100, 0 failures, 0 skipped**  
 **Supply Chain Security:** [#168 / run 38067395164](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395164) — PASS  
 **Factor Provenance Gate:** [#163 / run 38067395111](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395111) — PASS  
@@ -12,7 +12,7 @@
 
 ## 1. Current decision
 
-The durable PostgreSQL Data Intake implementation is **TESTED — EVIDENCE RECORDED** on the exact SHA above for the current integration suite. It is not a production-ready or legally compliant status. One technical criterion remains: a fresh OS process or independent worker boundary.
+The durable PostgreSQL Data Intake implementation is **TESTED — EVIDENCE RECORDED** on the exact SHA above for the current integration suite. It is not a production-ready or legally compliant status. Fresh-OS-process recovery and strict lease-expiry/fencing criteria were subsequently satisfied by bounded CI tests #250 and #252 (details below); staging/deployment verification, independent review, sustained load/soak testing and production authorization remain separate gates.
 
 ## 2. Verified implementation and test result
 
@@ -49,9 +49,9 @@ The CBAM test could not statically link the named InMemoryDataIntakePersistence 
 - [#247](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067344626): 100/100 after ESM resolution.
 - [#248](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38067395157): 100/100 after canonical schema reuse; all three workflows passed on the same SHA.
 
-## 5. Remaining technical criterion
+## 5. Process-boundary recovery criteria — satisfied in CI; residual limitations
 
-Issue #28 remains open until a test kills/relaunches the process or delegates retry to a freshly started independent worker. It must commit the ledger event, inject failure at final intake persistence, establish durable failure state, restart across a real process boundary, retry the same tenant/key/request/actor/methodology, and verify one event only with identical event ID/hash and preserved factor snapshot. Add expired-lease and stale-fencing-token races, and conflict cases for payload/identity.
+Issue #28's process-boundary recovery acceptance criteria are satisfied in the disposable CI environment: Test CI #250 exercises recovery across separate OS processes, and Test CI #252 verifies expiry/fencing behavior, including rejection of an expired holder before reclaim and stale-token rejection. The tests cover a committed ledger event followed by final intake-save failure, retry with the same tenant/key/request/actor/methodology, single-event identity/hash stability and factor-snapshot preservation. This remains bounded integration evidence, not sustained load/soak, production-scale multi-process stress testing, or deployment verification. Conflict cases for payload/identity and all independent security, staging, privacy/legal and release gates remain distinct.
 
 Test CI #250 now satisfies this criterion with separate OS processes and verifies expired-owner write rejection before reclaim, lease expiry plus stale fencing-token rejection. This does not constitute sustained load/soak or production-scale multi-process stress testing. The bounded concurrency test is not a sustained load/soak/throughput or multi-process stress campaign.
 
@@ -63,7 +63,7 @@ ADEME Base Carbone V23.6 and UK DESNZ 2026 candidates remain blocked until exact
 
 Passing CI does not establish production authentication/authorization/MFA, deployed EU/UK data residency, retention/deletion behavior, backup/restore, independent security review, legal compliance or production authorization.
 
-PR #21 remains draft/open/unmerged. Issue #27 remains open pending independent review and formal readiness decision. Issue #28 remains open for process/worker-boundary recovery.
+PR #21 remains draft/open/unmerged. Issue #27 remains open pending independent review and formal readiness decision. Issue #28 is CLOSED — process/worker-boundary recovery and strict lease-expiry fencing were verified in bounded CI tests #250 and #252.
 
 
 ## True process-boundary recovery — verified on 2026-10-10
