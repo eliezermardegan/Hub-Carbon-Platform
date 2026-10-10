@@ -72,7 +72,7 @@ export class InMemoryDataIntakePersistence implements DataIntakePersistence {
       if (current.payloadHash !== payloadHash) return { kind: "conflict" };
       const saved = this.activities.get(current.activityId);
       if (!saved) return { kind: "conflict" };
-      if (current.status === "calculated" || current.status === "blocked" || current.status === "not_ready") {
+      if (current.status === "calculated" || current.status === "blocked") {
         return { kind: "existing", activity: structuredClone(saved) };
       }
       if (this.inFlight.has(key)) return { kind: "busy" };
