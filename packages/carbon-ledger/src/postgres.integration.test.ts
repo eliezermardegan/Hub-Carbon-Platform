@@ -29,7 +29,7 @@ test("RLS filters tenants and fails closed without transaction-local tenant cont
   const rows = psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); select count(*) from carbon_ledger_events; commit;`).split("\n").filter(x => x === "1" || x === "0");
   assert.ok(rows.includes("1"), `Expected tenant A to see exactly one row, got: ${rows.join(",")}`);
   const withoutContext = psql("begin; set local role carbon_ledger_app; select count(*) from carbon_ledger_events; commit;");
-  assert.equal(withoutContext, "0");
+  assert.equal(withoutContext.split("\\n").filter(line => /^\\d+$/.test(line)).at(-1), "0");
 });
 
 test("RLS rejects cross-tenant inserts and append-only trigger rejects mutation", { skip: !enabled }, () => {
@@ -38,6 +38,6 @@ test("RLS rejects cross-tenant inserts and append-only trigger rejects mutation"
 });
 
 test("tenant-local setting is reset at transaction end on a reused session", { skip: !enabled }, () => {
-  const result = psql(`begin; select set_config('app.tenant_id','${tenantA}',true); commit; select coalesce(current_setting('app.tenant_id',true),'');`);
+  const result = psql(`begin; select set_config('app.tenant_id','${tenantA}',true); commit; select coalesce(nullif(current_setting('app.tenant_id',true),''),'RESET');`);
   assert.equal(result.split("\n").at(-1), "");
 });
