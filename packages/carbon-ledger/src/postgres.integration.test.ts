@@ -127,6 +127,36 @@ test("RLS filters tenants and fails closed without transaction-local tenant cont
   assert.equal(withoutContext.split("\n").filter(line => /^\d+$/.test(line)).at(-1), "0");
 });
 
+test("Data Intake RLS isolates durable records and activity claims and rejects cross-tenant writes", { skip: !enabled }, async () => {
+  const activityA = "acacacac-acac-4cac-8cac-acacacacacac";
+  const activityB = "bcbcbcbc-bcbc-4bcb-8bcb-bcbcbcbcbcbc";
+  psql(\`insert into data_intake_records (tenant_id,entity_type,entity_id,company_id,payload) values
+    ('\${tenantA}','company','rls-intake-company-a','\${tenantA}',jsonb_build_object('companyId','\${tenantA}')),
+    ('\${tenantB}','company','rls-intake-company-b','\${tenantB}',jsonb_build_object('companyId','\${tenantB}'));
+    insert into data_intake_activities (tenant_id,company_id,activity_id,reporting_period_id,idempotency_key,payload_hash,status,payload) values
+    ('\${tenantA}','\${tenantA}','\${activityA}','2026','rls-intake-key-a','hash-a','not_ready',jsonb_build_object('activityId','\${activityA}','companyId','\${tenantA}')),
+    ('\${tenantB}','\${tenantB}','\${activityB}','2026','rls-intake-key-b','hash-b','not_ready',jsonb_build_object('activityId','\${activityB}','companyId','\${tenantB}'));\`);
+  const tenantAReads = psql(\`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','\${tenantA}',true); select count(*) from data_intake_records; select count(*) from data_intake_activities; commit;\`)
+    .split("\\n").filter(line => /^\\d+$/.test(line));
+  assert.deepEqual(tenantAReads.slice(-2), ["1","1"], "tenant A must see only its own record and activity");
+  const noContextReads = psql("begin; set local role carbon_ledger_app; select count(*) from data_intake_records; select count(*) from data_intake_activities; commit;")
+    .split("\\n").filter(line => /^\\d+$/.test(line));
+  assert.deepEqual(noContextReads.slice(-2), ["0","0"], "missing tenant context must fail closed for Data Intake tables");
+  assert.throws(() => psql(\`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','\${tenantA}',true); insert into data_intake_records (tenant_id,entity_type,entity_id,company_id,payload) values ('\${tenantB}','company','rls-intake-cross-write','\${tenantB}','{}'::jsonb); commit;\`), /row-level security|policy/i);
+  assert.throws(() => psql(\`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','\${tenantA}',true); insert into data_intake_activities (tenant_id,company_id,activity_id,reporting_period_id,idempotency_key,payload_hash,status,payload) values ('\${tenantB}','\${tenantB}','dededede-dede-4ede-8ede-dededededede','2026','rls-intake-cross-key','hash-cross','not_ready','{}'::jsonb); commit;\`), /row-level security|policy/i);
+
+  const pool = new Pool({ connectionString: databaseUrl, max: 2 });
+  try {
+    const provider = { getTrustedTenantContext: () => ({ tenantId: tenantA, actorId: actor }) };
+    const persistence = new PostgresDataIntakePersistence(asApplicationRolePool(pool), provider);
+    await assert.rejects(() => persistence.getCompany(tenantB), /data-intake company does not match trusted tenant context/);
+    await assert.rejects(() => persistence.getActivity(tenantB, activityB), /data-intake company does not match trusted tenant context/);
+    assert.equal((await persistence.listActivities(tenantA,"2026")).length, 1);
+  } finally {
+    await pool.end();
+  }
+});
+
 test("RLS rejects cross-tenant inserts and application role cannot mutate ledger events", { skip: !enabled }, () => {
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); insert into carbon_ledger_events(id,tenant_id,actor_id,event_type,sequence,recorded_at,methodology_version,event_hash) values ('55555555-5555-4555-8555-555555555555','${tenantB}','${actor}','entry',2,now(),'test','hash-cross'); rollback;`), /row-level security|policy/i);
   assert.throws(() => psql(`begin; set local role carbon_ledger_app; select set_config('app.tenant_id','${tenantA}',true); update carbon_ledger_events set event_hash='tampered' where tenant_id='${tenantA}'; commit;`), /permission denied|append-only|carbon ledger/i);

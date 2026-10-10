@@ -71,6 +71,26 @@ export interface ActivityRecord {
 export type ActivityInput = Omit<ActivityRecord,"activityId"|"idempotencyKey"> & {activityId?:string; idempotencyKey?:string};
 export interface IntakeValidationIssue {code:string; field:string; message:string; severity:"error"|"warning";}
 export interface IntakeValidationResult {valid:boolean; issues:IntakeValidationIssue[];}
+
+export class ActivityValidationError extends Error {
+  readonly code = "INVALID_ACTIVITY";
+  readonly issues: IntakeValidationIssue[];
+  constructor(issues: IntakeValidationIssue[]) {
+    super("invalid_activity");
+    this.name = "ActivityValidationError";
+    this.issues = issues.filter(issue => issue.severity === "error").map(issue => ({
+      code: issue.code,
+      field: issue.field,
+      message: issue.message,
+      severity: "error" as const,
+    }));
+  }
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 export interface LedgerHandoff {
   tenantId:string; activityId:string; idempotencyKey:string; calculationReady:boolean;
   factorId?:string; factorVersion?:string; evidenceIds:string[]; dataQuality:DataQualityLevel; confidence:ConfidenceLevel;
@@ -90,20 +110,50 @@ export function validateActivity(input:ActivityInput):IntakeValidationResult {
   const issues:IntakeValidationIssue[]=[];
   const error=(code:string,field:string,message:string)=>issues.push({code,field,message,severity:"error"});
   const warning=(code:string,field:string,message:string)=>issues.push({code,field,message,severity:"warning"});
-  if(!input.companyId) error("required","companyId","companyId is required");
-  if(!input.reportingPeriodId) error("required","reportingPeriodId","reportingPeriodId is required");
-  if(!input.activityType) error("required","activityType","activityType is required");
-  if(!input.idempotencyKey&&!input.sourceDocumentId&&!input.sourceRecordId) error("idempotency","idempotencyKey","an idempotency key or source identifier is required");
-  if(input.scope===3&&!isScope3Category(input.scope3Category??0)) error("scope3_category","scope3Category","Scope 3 activity requires a category from 1 to 15");
-  if(input.quantity!==undefined&&(!Number.isFinite(input.quantity)||input.quantity<0)) error("quantity","quantity","quantity must be a finite non-negative number");
-  if(input.financialAmount!==undefined&&!Number.isFinite(input.financialAmount)) error("financial_amount","financialAmount","financialAmount must be finite");
-  if(input.dataQuality.completeness<0||input.dataQuality.completeness>1) error("quality_range","dataQuality.completeness","completeness must be between 0 and 1");
-  if(input.confidence.score<0||input.confidence.score>1) error("confidence_range","confidence.score","confidence score must be between 0 and 1");
-  if(input.method!=="spend_based"&&input.quantity===undefined&&input.dataAvailability!=="not_applicable") error("activity_quantity","quantity","quantity is required for non-spend methods");
-  if(input.method==="spend_based"&&input.financialAmount===undefined) error("spend_amount","financialAmount","financialAmount is required for spend-based calculation");
-  if(input.dataAvailability==="not_available") warning("unresolved","dataAvailability","record is unresolved and must not be treated as zero");
-  if(input.dataAvailability==="estimated"||input.dataAvailability==="inferred") warning("estimated","dataAvailability","estimated/inferred input requires visible methodology and review");
-  if(input.scope===3&&input.method==="unknown") warning("scope3_method","method","Scope 3 method is unresolved");
+  if (!isObjectRecord(input)) {
+    error("invalid_request","activity","activity must be a JSON object");
+    return {valid:false,issues};
+  }
+  const value = input as unknown as Record<string, unknown>;
+  if (typeof value.companyId !== "string" || !value.companyId.trim()) error("required","companyId","companyId is required");
+  if (typeof value.reportingPeriodId !== "string" || !value.reportingPeriodId.trim()) error("required","reportingPeriodId","reportingPeriodId is required");
+  if (typeof value.activityType !== "string" || !value.activityType.trim()) error("required","activityType","activityType is required");
+  if (!(typeof value.idempotencyKey === "string" && value.idempotencyKey.length > 0) &&
+      !(typeof value.sourceDocumentId === "string" && value.sourceDocumentId.length > 0) &&
+      !(typeof value.sourceRecordId === "string" && value.sourceRecordId.length > 0)) {
+    error("idempotency","idempotencyKey","an idempotency key or source identifier is required");
+  }
+  if (![1,2,3].includes(value.scope as number)) error("scope","scope","scope must be 1, 2 or 3");
+  if (value.scope===3&&!isScope3Category(typeof value.scope3Category==="number"?value.scope3Category:0)) error("scope3_category","scope3Category","Scope 3 activity requires a category from 1 to 15");
+  if (!["supplier_specific","activity_based","spend_based","distance_based","unknown"].includes(String(value.method))) error("method","method","method is invalid");
+  if (!["provided","not_available","not_applicable","pending","estimated","inferred","rejected"].includes(String(value.dataAvailability))) error("data_availability","dataAvailability","dataAvailability is invalid");
+  if (!["pending","classified","review_required","rejected"].includes(String(value.classificationStatus))) error("classification_status","classificationStatus","classificationStatus is invalid");
+  if (value.quantity!==undefined&&(typeof value.quantity!=="number"||!Number.isFinite(value.quantity)||value.quantity<0)) error("quantity","quantity","quantity must be a finite non-negative number");
+  if (value.financialAmount!==undefined&&(typeof value.financialAmount!=="number"||!Number.isFinite(value.financialAmount))) error("financial_amount","financialAmount","financialAmount must be finite");
+
+  const quality = value.dataQuality;
+  if (!isObjectRecord(quality)) {
+    error("required","dataQuality","dataQuality must be an object");
+  } else {
+    if (!["A","B","C","D"].includes(String(quality.level))) error("data_quality_level","dataQuality.level","data quality level is invalid");
+    if (typeof quality.completeness!=="number"||!Number.isFinite(quality.completeness)||quality.completeness<0||quality.completeness>1) error("quality_range","dataQuality.completeness","completeness must be between 0 and 1");
+    if (typeof quality.rationale!=="string") error("data_quality_rationale","dataQuality.rationale","data quality rationale is required");
+  }
+  const confidence = value.confidence;
+  if (!isObjectRecord(confidence)) {
+    error("required","confidence","confidence must be an object");
+  } else {
+    if (typeof confidence.score!=="number"||!Number.isFinite(confidence.score)||confidence.score<0||confidence.score>1) error("confidence_range","confidence.score","confidence score must be between 0 and 1");
+    if (!["high","medium","low"].includes(String(confidence.level))) error("confidence_level","confidence.level","confidence level is invalid");
+    if (!["extraction","classification","inference","manual"].includes(String(confidence.source))) error("confidence_source","confidence.source","confidence source is invalid");
+    if (typeof confidence.humanReviewed!=="boolean") error("confidence_review","confidence.humanReviewed","humanReviewed must be a boolean");
+  }
+  if (!Array.isArray(value.evidenceIds)||!value.evidenceIds.every(item=>typeof item==="string")) error("evidence_ids","evidenceIds","evidenceIds must be an array of strings");
+  if (value.method!=="spend_based"&&value.quantity===undefined&&value.dataAvailability!=="not_applicable") error("activity_quantity","quantity","quantity is required for non-spend methods");
+  if (value.method==="spend_based"&&value.financialAmount===undefined) error("spend_amount","financialAmount","financialAmount is required for spend-based calculation");
+  if (value.dataAvailability==="not_available") warning("unresolved","dataAvailability","record is unresolved and must not be treated as zero");
+  if (value.dataAvailability==="estimated"||value.dataAvailability==="inferred") warning("estimated","dataAvailability","estimated/inferred input requires visible methodology and review");
+  if (value.scope===3&&value.method==="unknown") warning("scope3_method","method","Scope 3 method is unresolved");
   return {valid:issues.every(i=>i.severity!=="error"),issues};
 }
 export function toLedgerHandoff(activity:ActivityRecord):LedgerHandoff {
@@ -114,8 +164,18 @@ export function toLedgerHandoff(activity:ActivityRecord):LedgerHandoff {
     dataQuality:activity.dataQuality.level,confidence:activity.confidence.level};
 }
 export function createActivity(input:ActivityInput):ActivityRecord {
-  const activity:ActivityRecord={...input,activityId:input.activityId??randomId(),idempotencyKey:input.idempotencyKey??defaultIdempotencyKey(input)};
-  const v=validateActivity(activity); if(!v.valid) throw new Error(v.issues.filter(i=>i.severity==="error").map(i=>i.message).join("; ")); return activity;
+  if (!isObjectRecord(input)) {
+    throw new ActivityValidationError([{code:"invalid_request",field:"activity",message:"activity must be a JSON object",severity:"error"}]);
+  }
+  const source = input as ActivityInput;
+  const activity:ActivityRecord={
+    ...source,
+    activityId:typeof source.activityId==="string"&&source.activityId.length>0?source.activityId:randomId(),
+    idempotencyKey:typeof source.idempotencyKey==="string"&&source.idempotencyKey.length>0?source.idempotencyKey:defaultIdempotencyKey(source),
+  };
+  const v=validateActivity(activity);
+  if(!v.valid) throw new ActivityValidationError(v.issues);
+  return activity;
 }
 function randomId():string { return globalThis.crypto?.randomUUID?.()??`activity_${Date.now()}_${Math.random().toString(36).slice(2)}`; }
 
@@ -128,4 +188,5 @@ export default {
   validateActivity,
   toLedgerHandoff,
   createActivity,
+  ActivityValidationError,
 };

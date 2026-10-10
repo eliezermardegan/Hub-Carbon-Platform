@@ -92,3 +92,10 @@ The above evidence applies to the code head, not the documentation commit create
 ## 10. Documentation evidence update — 2026-10-10
 
 The review document and related evidence files at head 74f5e00e8cd0aecb484e78ec9f40167f13a02dfb passed [Test CI #227](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058675707) (98/98, PostgreSQL 16.15), [Supply Chain Security #147](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058675686) and [Factor Provenance Gate #142](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38058675454). This subsequent evidence-register commit requires its own fresh checks. PR #21 and Issue #27 carry the latest exact-head links.
+
+
+## 11. End-to-end authorization review refresh — 2026-10-10
+
+The earlier sections are retained as historical reasoning for the initial iteration. The executable surface and acceptance status have since advanced: durable PostgreSQL Data Intake persistence and process-boundary recovery tests exist, while production authentication remains an injected dependency rather than a wired identity implementation.
+
+See the authoritative [End-to-End Authorization and Tenant-Isolation Review](./END_TO_END_AUTHORIZATION_AND_TENANT_ISOLATION.md) for the current surface matrix and test plan. Key gaps remain real identity/session/token validation, MFA/SSO/revocation, role/object-level authorization, deployed role/pool configuration, logging/monitoring integration, and executable worker/file/export handlers. The new negative tests must pass at the exact current SHA before this review is marked tested.

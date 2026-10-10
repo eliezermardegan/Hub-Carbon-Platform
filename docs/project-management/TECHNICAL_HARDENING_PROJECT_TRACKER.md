@@ -687,3 +687,21 @@ Implementation SHA: `7168f513a203dc78d742cf42c70cb4e3fcaca6c9`.
 - [Factor Provenance Gate #167](https://github.com/eliezermardegan/Hub-Carbon-Platform/actions/runs/38069001787): PASS on the same SHA.
 - Recovery uses two independent OS processes; a separate assertion now rejects writes from an expired owner before a new claimant takes over, then verifies reclaim and stale-token rejection.
 - This remains a bounded integration test, not a sustained load/soak or production deployment proof. Independent review, target environment and legal/privacy gates remain open.
+
+
+## 29. End-to-end authorization and tenant-isolation review — 2026-10-10
+
+**Status before CI:** IN PROGRESS — focused code/test hardening committed, evidence pending.
+**Scope:** \`apps/api/src/intake-api.ts\`, Data Intake model/service, PostgreSQL RLS for durable intake records/activities, and a surface inventory for worker/files/documents/reports/exports.
+**Implementation baseline:** \`6996e3881d0234c6a4f95eb474f4422d520b31c6\`.
+
+Actions in this tranche:
+- Stop reflecting unexpected service/database/authenticator exception messages to clients; use stable error codes and safe 500/503 responses.
+- Require \`application/json\`, maintain the 1 MiB body cap, reject non-object JSON bodies, and harden runtime activity validation for missing nested data-quality/confidence/evidence structures.
+- Test a cross-tenant request through the real DataIntakeService and assert rejection occurs before persistent claim/factor resolution.
+- Extend real-PostgreSQL tests for Data Intake records/claim RLS, fail-closed missing tenant context, denied cross-tenant inserts and adapter mismatch.
+- Add an authorization matrix distinguishing tested controls from infrastructure/product surfaces that are not executable in this repository yet.
+
+Known not implemented or not verifiable here: a concrete identity-provider/session/JWT integration; MFA/SSO/revocation; roles and permissions; worker queue handlers; upload/blob/download/export routes; secret/KMS and deployment network/proxy/rate-limit configuration; actual residency/retention/backups and legal review. These must remain explicit gates. Do not claim full product authorization, privacy compliance or production readiness from local/CI tests.
+
+The new test result, exact workflow SHAs and residual issues will be added after CI completes. Stress/soak testing and official ADEME/DESNZ factor verification remain separate follow-on workstreams; no production factor is promoted by this activity.
